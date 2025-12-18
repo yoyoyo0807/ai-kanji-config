@@ -3,47 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高度な日程調整</title>
+    <title>日程調整アプリ</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 10px; }
-        .container { background: white; border-radius: 12px; padding: 20px; max-width: 500px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .section { margin-bottom: 20px; }
-        h2 { font-size: 1.1em; border-left: 4px solid #00b900; padding-left: 10px; }
-        .friend-list { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; }
-        .friend-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
-        .friend-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }
-        button { width: 100%; padding: 12px; background: #00b900; color: white; border: none; border-radius: 25px; font-weight: bold; font-size: 1em; }
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { font-size: 1.2rem; text-align: center; color: #333; margin-bottom: 20px; }
+        h2 { font-size: 1rem; border-left: 5px solid #00b900; padding-left: 10px; margin-top: 25px; }
+        .item-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; }
+        input[type="date"], select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        
+        .list-container { border: 1px solid #eee; border-radius: 10px; max-height: 300px; overflow-y: auto; background: #fafafa; }
+        .row { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+        .row:last-child { border-bottom: none; }
+        .name-info { display: flex; align-items: center; gap: 10px; }
+        .icon { width: 30px; height: 30px; background: #ccc; border-radius: 50%; display: inline-block; }
+        .group-icon { background: #00b900; border-radius: 5px; } /* グループは四角いアイコン */
+        
+        .controls { display: flex; gap: 10px; align-items: center; }
+        .controls label { font-size: 0.7rem; margin: 0; display: flex; flex-direction: column; align-items: center; }
+
+        .time-options { display: flex; justify-content: space-around; background: #f9f9f9; padding: 10px; border-radius: 8px; }
+        
+        button { width: 100%; background: #00b900; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📅 日程調整作成</h1>
+        <h1>📅 日程調整の作成</h1>
         
-        <div class="section">
+        <div class="item-group">
             <h2>1. 期間を選択</h2>
-            <input type="date" id="start"> 〜 <input type="date" id="end">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="date" id="startDate"> 〜 <input type="date" id="endDate">
+            </div>
         </div>
 
-        <div class="section">
-            <h2>2. メンバーを選択</h2>
-            <div class="friend-list">
-                <div class="friend-item">
-                    <input type="checkbox"> <img src="https://via.placeholder.com/40" alt="icon"> <span>葵 (優先: <input type="checkbox">)</span>
+        <div class="item-group">
+            <h2>2. メンバー・グループを選択</h2>
+            <div class="list-container">
+                <div class="row" style="background: #e6f7e6;">
+                    <div class="name-info"><span class="icon group-icon"></span><strong>グループA</strong></div>
+                    <div class="controls">
+                        <label>参加<input type="checkbox" name="member" value="グループA"></label>
+                        <label>優先<input type="checkbox" name="prio" value="グループA"></label>
+                    </div>
                 </div>
-                <div class="friend-item">
-                    <input type="checkbox"> <img src="https://via.placeholder.com/40" alt="icon"> <span>青木 祐太朗 (優先: <input type="checkbox">)</span>
+                <div class="row" style="background: #e6f7e6;">
+                    <div class="name-info"><span class="icon group-icon"></span><strong>グループB</strong></div>
+                    <div class="controls">
+                        <label>参加<input type="checkbox" name="member" value="グループB"></label>
+                        <label>優先<input type="checkbox" name="prio" value="グループB"></label>
+                    </div>
                 </div>
+                <div class="row" style="background: #e6f7e6;">
+                    <div class="name-info"><span class="icon group-icon"></span><strong>グループC</strong></div>
+                    <div class="controls">
+                        <label>参加<input type="checkbox" name="member" value="グループC"></label>
+                        <label>優先<input type="checkbox" name="prio" value="グループC"></label>
+                    </div>
                 </div>
+
+                <div id="memberList"></div>
+            </div>
         </div>
 
-        <div class="section">
+        <div class="item-group">
             <h2>3. 時間帯を選択</h2>
-            <label><input type="checkbox"> 午前</label>
-            <label><input type="checkbox"> 午後</label>
-            <label><input type="checkbox"> 夜</label>
+            <div class="time-options">
+                <label><input type="checkbox" name="time" value="morning"> 朝 (〜12:00)</label>
+                <label><input type="checkbox" name="time" value="afternoon"> 昼 (12:00〜18:00)</label>
+                <label><input type="checkbox" name="time" value="night"> 夜 (18:00〜)</label>
+            </div>
         </div>
 
-        <button onclick="calculate()">最適な日程を算出する</button>
+        <button onclick="submitResult()">最適な日程を算出する</button>
     </div>
+
+    <script>
+        // メンバー1〜20を自動生成
+        const memberList = document.getElementById('memberList');
+        for (let i = 1; i <= 20; i++) {
+            const row = document.createElement('div');
+            row.className = 'row';
+            row.innerHTML = `
+                <div class="name-info"><span class="icon"></span>メンバー${i}</div>
+                <div class="controls">
+                    <label>参加<input type="checkbox" name="member" value="メンバー${i}"></label>
+                    <label>優先<input type="checkbox" name="prio" value="メンバー${i}"></label>
+                </div>
+            `;
+            memberList.appendChild(row);
+        }
+
+        function submitResult() {
+            alert("算出を開始します。LINEに結果を送ります。");
+        }
+    </script>
 </body>
 </html>
