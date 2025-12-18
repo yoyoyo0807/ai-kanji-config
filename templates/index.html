@@ -2,18 +2,48 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>日程調整アプリ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高度な日程調整</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; text-align: center; }
-        .card { border: 1px solid #ccc; border-radius: 8px; padding: 20px; max-width: 400px; margin: auto; }
+        body { font-family: sans-serif; background: #f0f2f5; padding: 10px; }
+        .container { background: white; border-radius: 12px; padding: 20px; max-width: 500px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 20px; }
+        h2 { font-size: 1.1em; border-left: 4px solid #00b900; padding-left: 10px; }
+        .friend-list { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; }
+        .friend-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .friend-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }
+        button { width: 100%; padding: 12px; background: #00b900; color: white; border: none; border-radius: 25px; font-weight: bold; font-size: 1em; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>📅 日程調整</h1>
-        <p>LINEで「調整」と送ると、最適な日程を回答します。</p>
-        <hr>
-        <p>現在の候補日: 20日, 21日, 22日</p>
+    <div class="container">
+        <h1>📅 日程調整作成</h1>
+        
+        <div class="section">
+            <h2>1. 期間を選択</h2>
+            <input type="date" id="start"> 〜 <input type="date" id="end">
+        </div>
+
+        <div class="section">
+            <h2>2. メンバーを選択</h2>
+            <div class="friend-list">
+                <div class="friend-item">
+                    <input type="checkbox"> <img src="https://via.placeholder.com/40" alt="icon"> <span>葵 (優先: <input type="checkbox">)</span>
+                </div>
+                <div class="friend-item">
+                    <input type="checkbox"> <img src="https://via.placeholder.com/40" alt="icon"> <span>青木 祐太朗 (優先: <input type="checkbox">)</span>
+                </div>
+                </div>
+        </div>
+
+        <div class="section">
+            <h2>3. 時間帯を選択</h2>
+            <label><input type="checkbox"> 午前</label>
+            <label><input type="checkbox"> 午後</label>
+            <label><input type="checkbox"> 夜</label>
+        </div>
+
+        <button onclick="calculate()">最適な日程を算出する</button>
     </div>
 </body>
 </html>
