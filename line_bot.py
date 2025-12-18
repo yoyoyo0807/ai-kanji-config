@@ -1,44 +1,22 @@
 import os
-import re
-from flask import Flask, request, abort
+from flask import Flask, request, abort, render_template
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 
 app = Flask(__name__)
 
-# 環境変数
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
 LINE_CHANNEL_SECRET = os.environ.get('LINE_CHANNEL_SECRET')
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-# --- 模擬データ（本来はDBから取得） ---
-# 人1〜人20の3日分(20, 21, 22日)の空き状況
-availability_data = {
-    f"人{i}": [0, 1, 0] if i % 2 == 0 else [1, 0, 0] for i in range(1, 21)
-}
-dates = ["20日", "21日", "22日"]
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-def solve_schedule(priorities, participants):
-    """最適な日程を計算するロジック"""
-    scores = [0, 0, 0]
-    for i in range(3):
-        # 優先メンバーが全員空いているか(0が空き)
-        prio_ok = all(availability_data.get(p, [0,0,0])[i] == 0 for p in priorities)
-        # 参加メンバーの空き人数
-        count = sum(1 for p in participants if availability_data.get(p, [0,0,0])[i] == 0)
-        
-        if prio_ok:
-            scores[i] = count + 100 # 優先OKなら大幅加点
-        else:
-            scores[i] = count
-            
-    best_idx = scores.index(max(scores))
-    return dates[best_idx], scores[best_idx] % 100
-
-@app.route("/callback", methods=['POST'])
+@app.route('/callback', methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
@@ -50,32 +28,7 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    text = event.message.text
-    
-    if "調整" in text:
-        # メッセージ解析
-        range_match = re.search(r'期間：(.+)', text)
-        all_match = re.search(r'参加：(.+)', text)
-        prio_match = re.search(r'優先：(.+)', text)
-        time_match = re.search(r'時間：(.+)', text)
-        
-        d_range = range_match.group(1) if range_match else "未指定"
-        participants = all_match.group(1).split(',') if all_match else []
-        priorities = prio_match.group(1).split(',') if prio_match else []
-        times = time_match.group(1).split(',') if time_match else []
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text='受け取りました'))
 
-        # 日程計算の実行
-        best_day, ok_count = solve_schedule(priorities, participants)
-
-        # 返信メッセージの作成
-        res = f"【日程調整の結果】\n\n"
-        res += f"📅 指定期間：\n{d_range}\n"
-        res += f"🏆 第一候補：12月{best_day}\n"
-        res += f"👥 参加可能：{ok_count}名\n"
-        res += f"⏰ 希望時間：{', '.join(times)}\n\n"
-        res += "※優先メンバーと参加人数のバランスから最適な日を算出しました。"
-        
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=res))
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run()
