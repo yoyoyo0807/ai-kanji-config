@@ -4,40 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>高度な日程調整ツール</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f5f7; margin: 0; padding: 15px; padding-bottom: 100px; }
         .container { max-width: 500px; margin: auto; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        .section-title { font-size: 0.95rem; font-weight: bold; border-left: 4px solid #00b900; padding-left: 10px; margin: 25px 0 15px; }
-        
-        /* タブ切り替え */
+        .section-title { font-size: 0.95rem; font-weight: bold; border-left: 4px solid #00b900; padding-left: 10px; margin: 25px 0 10px; }
         .tab-container { display: flex; border-bottom: 2px solid #eee; margin-bottom: 10px; }
         .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; }
         .tab.active { color: #00b900; border-bottom: 2px solid #00b900; font-weight: bold; }
-
-        /* リスト部分 */
-        .list-box { border: 1px solid #eee; border-radius: 12px; max-height: 200px; overflow-y: auto; background: #fafafa; margin-bottom: 20px; }
+        .list-box { border: 1px solid #eee; border-radius: 12px; max-height: 180px; overflow-y: auto; background: #fafafa; margin-bottom: 15px; }
         .list-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
-        
-        /* ★新設：選ばれたメンバーの優先設定エリア */
-        .selected-area { background: #eef9ee; border: 2px solid #00b900; border-radius: 12px; padding: 15px; margin-top: 10px; }
-        .selected-member { display: flex; align-items: center; justify-content: space-between; background: white; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.9rem; }
-        .prio-btn { background: #ddd; border: none; padding: 5px 10px; border-radius: 15px; font-size: 0.75rem; cursor: pointer; }
-        .prio-btn.active { background: #ffcf00; color: #333; font-weight: bold; }
-
+        .selected-area { background: #eef9ee; border: 2px solid #00b900; border-radius: 12px; padding: 12px; margin-bottom: 20px; }
+        .selected-member { display: flex; align-items: center; justify-content: space-between; background: white; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.85rem; }
+        .prio-btn { background: #ddd; border: none; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; cursor: pointer; }
+        .prio-btn.active { background: #ffcf00; font-weight: bold; }
         .time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .time-item { background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee; font-size: 0.85rem; }
-        
+        .time-item { background: #f9f9f9; padding: 8px; border-radius: 8px; border: 1px solid #eee; font-size: 0.8rem; }
         button#submit-btn { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; background: #00b900; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📅 日程調整を作成</h1>
-
         <div class="section-title">1. 開催期間を選択</div>
         <input type="date" id="start"> 〜 <input type="date" id="end">
 
-        <div class="section-title">2. 参加メンバーを選択 (友だち・グループ)</div>
+        <div class="section-title">2. 参加メンバーを選択</div>
         <div class="tab-container">
             <div class="tab active" id="t-f" onclick="show('f')">友だち</div>
             <div class="tab" id="t-g" onclick="show('g')">グループ</div>
@@ -45,22 +37,26 @@
         <div class="list-box" id="f-list"></div>
         <div class="list-box" id="g-list" style="display:none;"></div>
 
-        <div class="section-title">3. 優先するメンバーを決定 (★を付ける)</div>
-        <div class="selected-area" id="selected-list">
-            <p style="font-size: 0.8rem; color: #666; text-align: center;">メンバーを選択するとここに表示されます</p>
-        </div>
+        <div class="section-title">3. 優先メンバー（★をタップ）</div>
+        <div class="selected-area" id="selected-list"><p style="font-size:0.75rem; text-align:center;">メンバー未選択</p></div>
 
-        <div class="section-title">4. 希望する時間帯 (詳細)</div>
+        <div class="section-title">4. 希望する時間帯</div>
         <div class="time-grid" id="time-grid"></div>
 
         <button id="submit-btn" onclick="requestCalculation()">最適な日程を算出する</button>
     </div>
 
     <script>
+        const LIFF_ID = "2008718467-wSHMbZKY"; // 発行されたID
         const members = Array.from({length: 20}, (_, i) => `メンバー${i+1}`);
         const groups = { 'グループA': ['リーダーA', '会員A1', '会員A2'], 'グループB': ['リーダーB', '会員B1', '会員B2'] };
         let selected = new Set();
         let priorities = new Set();
+
+        // LIFF初期化
+        liff.init({ liffId: LIFF_ID }).then(() => {
+            if (!liff.isLoggedIn()) liff.login();
+        }).catch(err => console.error(err));
 
         function show(t) {
             document.getElementById('t-f').classList.toggle('active', t==='f');
@@ -70,57 +66,47 @@
         }
 
         function renderLists() {
-            const fList = document.getElementById('f-list');
-            fList.innerHTML = members.map(m => `
-                <div class="list-item"><span>${m}</span><input type="checkbox" onchange="toggleMember('${m}', this.checked)"></div>
-            `).join('');
-
-            const gList = document.getElementById('g-list');
-            gList.innerHTML = Object.keys(groups).map(g => `
-                <div class="list-item"><strong>${g}</strong><input type="checkbox" onchange="toggleGroup('${g}', this.checked)"></div>
-            `).join('');
+            document.getElementById('f-list').innerHTML = members.map(m => `<div class="list-item"><span>${m}</span><input type="checkbox" onchange="toggleM('${m}', this.checked)"></div>`).join('');
+            document.getElementById('g-list').innerHTML = Object.keys(groups).map(g => `<div class="list-item"><strong>${g}</strong><input type="checkbox" onchange="toggleG('${g}', this.checked)"></div>`).join('');
         }
 
-        function toggleMember(m, isAdd) {
+        function toggleM(m, isAdd) {
             if(isAdd) selected.add(m); else { selected.delete(m); priorities.delete(m); }
-            updateSelectedView();
+            updateV();
         }
 
-        function toggleGroup(g, isAdd) {
+        function toggleG(g, isAdd) {
             groups[g].forEach(m => isAdd ? selected.add(m) : (selected.delete(m), priorities.delete(m)));
-            updateSelectedView();
+            updateV();
         }
 
-        function updateSelectedView() {
+        function updateV() {
             const area = document.getElementById('selected-list');
             if(selected.size === 0) { area.innerHTML = '<p style="text-align:center; font-size:0.8rem;">メンバー未選択</p>'; return; }
-            area.innerHTML = Array.from(selected).map(m => `
-                <div class="selected-member">
-                    <span>${m}</span>
-                    <button class="prio-btn ${priorities.has(m)?'active':''}" onclick="togglePrio('${m}')">
-                        ${priorities.has(m)?'★ 優先中':'★ 優先にする'}
-                    </button>
-                </div>
-            `).join('');
+            area.innerHTML = Array.from(selected).map(m => `<div class="selected-member"><span>${m}</span><button class="prio-btn ${priorities.has(m)?'active':''}" onclick="toggleP('${m}')">${priorities.has(m)?'★ 優先中':'★ 優先にする'}</button></div>`).join('');
         }
 
-        function togglePrio(m) {
+        function toggleP(m) {
             if(priorities.has(m)) priorities.delete(m); else priorities.add(m);
-            updateSelectedView();
+            updateV();
         }
 
-        // 時間帯24時間分を細かく生成
         const grid = document.getElementById('time-grid');
-        for(let h=6; h<24; h+=2) {
-            grid.innerHTML += `<div class="time-item"><input type="checkbox" value="${h}:00"> ${h}:00 〜 ${h+2}:00</div>`;
-        }
+        for(let h=6; h<24; h+=2) grid.innerHTML += `<div class="time-item"><input type="checkbox" name="t-check" value="${h}:00"> ${h}:00〜${h+2}:00</div>`;
 
         function requestCalculation() {
             const start = document.getElementById('start').value;
+            const end = document.getElementById('end').value;
+            const tChecked = Array.from(document.querySelectorAll('input[name="t-check"]:checked')).map(e => e.value);
+            
             if(!start || selected.size === 0) { alert("期間とメンバーを選んでください"); return; }
-            alert("算出を開始します。結果はLINEトーク画面で回答します！");
-        }
 
+            const msg = `調整開始\n期間：${start}〜${end}\n参加：${Array.from(selected).join(',')}\n優先：${Array.from(priorities).join(',')}\n時間：${tChecked.join(',')}`;
+
+            liff.sendMessages([{ type: 'text', text: msg }])
+                .then(() => liff.closeWindow())
+                .catch(err => alert("送信失敗: " + err));
+        }
         renderLists();
     </script>
 </body>
