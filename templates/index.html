@@ -5,108 +5,123 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>高度な日程調整ツール</title>
     <style>
-        body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; background: #f4f5f7; margin: 0; padding: 15px; }
+        body { font-family: -apple-system, sans-serif; background: #f4f5f7; margin: 0; padding: 15px; padding-bottom: 100px; }
         .container { max-width: 500px; margin: auto; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        h1 { font-size: 1.2rem; text-align: center; color: #111; }
-        .section-title { font-size: 0.95rem; font-weight: bold; border-left: 4px solid #00b900; padding-left: 10px; margin: 25px 0 15px; color: #333; }
+        .section-title { font-size: 0.95rem; font-weight: bold; border-left: 4px solid #00b900; padding-left: 10px; margin: 25px 0 15px; }
         
-        /* 期間選択 */
-        .date-picker { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
-        input[type="date"] { padding: 8px; border: 1px solid #ddd; border-radius: 6px; }
-
-        /* 友だち・グループ切り替えタブ */
+        /* タブ切り替え */
         .tab-container { display: flex; border-bottom: 2px solid #eee; margin-bottom: 10px; }
-        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; font-weight: bold; }
-        .tab.active { color: #00b900; border-bottom: 2px solid #00b900; }
+        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; }
+        .tab.active { color: #00b900; border-bottom: 2px solid #00b900; font-weight: bold; }
 
         /* リスト部分 */
-        .list-box { border: 1px solid #eee; border-radius: 12px; max-height: 250px; overflow-y: auto; background: #fafafa; }
-        .list-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; }
-        .info { display: flex; align-items: center; gap: 10px; }
-        .icon { width: 35px; height: 35px; background: #ccc; border-radius: 50%; }
-        .group-icon { border-radius: 8px; background: #00b900; }
+        .list-box { border: 1px solid #eee; border-radius: 12px; max-height: 200px; overflow-y: auto; background: #fafafa; margin-bottom: 20px; }
+        .list-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
         
-        .checks { display: flex; gap: 12px; font-size: 0.75rem; text-align: center; }
-        .checks label { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+        /* ★新設：選ばれたメンバーの優先設定エリア */
+        .selected-area { background: #eef9ee; border: 2px solid #00b900; border-radius: 12px; padding: 15px; margin-top: 10px; }
+        .selected-member { display: flex; align-items: center; justify-content: space-between; background: white; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.9rem; }
+        .prio-btn { background: #ddd; border: none; padding: 5px 10px; border-radius: 15px; font-size: 0.75rem; cursor: pointer; }
+        .prio-btn.active { background: #ffcf00; color: #333; font-weight: bold; }
 
-        /* グループ内メンバー展開用（簡易版） */
-        .sub-member { background: #fff; padding-left: 40px; font-size: 0.8rem; color: #666; display: none; }
-        .active-group .sub-member { display: block; }
-
-        /* 時間帯選択 */
-        .time-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .time-item { background: #f9f9f9; padding: 8px; border-radius: 6px; font-size: 0.85rem; border: 1px solid #eee; }
-
-        button#submit-btn { width: 100%; background: #00b900; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 30px; box-shadow: 0 4px 10px rgba(0,185,0,0.3); }
+        .time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .time-item { background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee; font-size: 0.85rem; }
+        
+        button#submit-btn { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; background: #00b900; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📅 日程調整を作成</h1>
 
-        <div class="section-title">1. 開催予定期間を選択</div>
-        <div class="date-picker">
-            <input type="date" id="start-date"> 〜 <input type="date" id="end-date">
-        </div>
+        <div class="section-title">1. 開催期間を選択</div>
+        <input type="date" id="start"> 〜 <input type="date" id="end">
 
-        <div class="section-title">2. メンバー・グループを選択</div>
+        <div class="section-title">2. 参加メンバーを選択 (友だち・グループ)</div>
         <div class="tab-container">
-            <div class="tab active" id="tab-friend" onclick="switchTab('friend')">友だち</div>
-            <div class="tab" id="tab-group" onclick="switchTab('group')">グループ</div>
+            <div class="tab active" id="t-f" onclick="show('f')">友だち</div>
+            <div class="tab" id="t-g" onclick="show('g')">グループ</div>
+        </div>
+        <div class="list-box" id="f-list"></div>
+        <div class="list-box" id="g-list" style="display:none;"></div>
+
+        <div class="section-title">3. 優先するメンバーを決定 (★を付ける)</div>
+        <div class="selected-area" id="selected-list">
+            <p style="font-size: 0.8rem; color: #666; text-align: center;">メンバーを選択するとここに表示されます</p>
         </div>
 
-        <div class="list-box" id="friend-list">
-            </div>
-        <div class="list-box" id="group-list" style="display:none;">
-            </div>
+        <div class="section-title">4. 希望する時間帯 (詳細)</div>
+        <div class="time-grid" id="time-grid"></div>
 
-        <div class="section-title">3. 希望する時間帯 (複数可)</div>
-        <div class="time-grid">
-            <div class="time-item"><input type="checkbox" name="time" value="早朝"> 6:00-9:00</div>
-            <div class="time-item"><input type="checkbox" name="time" value="午前"> 9:00-12:00</div>
-            <div class="time-item"><input type="checkbox" name="time" value="午後"> 12:00-15:00</div>
-            <div class="time-item"><input type="checkbox" name="time" value="夕方"> 15:00-18:00</div>
-            <div class="time-item"><input type="checkbox" name="time" value="夜"> 18:00-21:00</div>
-            <div class="time-item"><input type="checkbox" name="time" value="深夜"> 21:00-24:00</div>
-        </div>
-
-        <button id="submit-btn" onclick="sendToLine()">この条件で調整を開始する</button>
+        <button id="submit-btn" onclick="requestCalculation()">最適な日程を算出する</button>
     </div>
 
     <script>
-        // タブ切り替え
-        function switchTab(type) {
-            document.getElementById('tab-friend').classList.toggle('active', type === 'friend');
-            document.getElementById('tab-group').classList.toggle('active', type === 'group');
-            document.getElementById('friend-list').style.display = type === 'friend' ? 'block' : 'none';
-            document.getElementById('group-list').style.display = type === 'group' ? 'block' : 'none';
+        const members = Array.from({length: 20}, (_, i) => `メンバー${i+1}`);
+        const groups = { 'グループA': ['リーダーA', '会員A1', '会員A2'], 'グループB': ['リーダーB', '会員B1', '会員B2'] };
+        let selected = new Set();
+        let priorities = new Set();
+
+        function show(t) {
+            document.getElementById('t-f').classList.toggle('active', t==='f');
+            document.getElementById('t-g').classList.toggle('active', t==='g');
+            document.getElementById('f-list').style.display = t==='f' ? 'block' : 'none';
+            document.getElementById('g-list').style.display = t==='g' ? 'block' : 'none';
         }
 
-        // リスト生成
-        const fList = document.getElementById('friend-list');
-        for (let i = 1; i <= 20; i++) {
-            fList.innerHTML += `<div class="list-item"><div class="info"><div class="icon"></div>メンバー${i}</div><div class="checks"><label>参加<input type="checkbox" class="join"></label><label>優先<input type="checkbox" class="prio"></label></div></div>`;
+        function renderLists() {
+            const fList = document.getElementById('f-list');
+            fList.innerHTML = members.map(m => `
+                <div class="list-item"><span>${m}</span><input type="checkbox" onchange="toggleMember('${m}', this.checked)"></div>
+            `).join('');
+
+            const gList = document.getElementById('g-list');
+            gList.innerHTML = Object.keys(groups).map(g => `
+                <div class="list-item"><strong>${g}</strong><input type="checkbox" onchange="toggleGroup('${g}', this.checked)"></div>
+            `).join('');
         }
 
-        const gList = document.getElementById('group-list');
-        ['グループA', 'グループB', 'グループC'].forEach(g => {
-            gList.innerHTML += `
-                <div class="list-item"><div class="info"><div class="icon group-icon"></div>${g}</div><div class="checks"><label>参加<input type="checkbox"></label></div></div>
-                <div class="sub-member">┗ <input type="checkbox"> リーダー(優先)</div>
-                <div class="sub-member">┗ <input type="checkbox"> メンバー2(優先)</div>
-                <div class="sub-member">┗ <input type="checkbox"> メンバー3(優先)</div>
-            `;
-        });
-
-        // 🚀 結果を表示・送信する関数
-        function sendToLine() {
-            const start = document.getElementById('start-date').value;
-            const end = document.getElementById('end-date').value;
-            if(!start || !end) { alert("期間を選択してください"); return; }
-            
-            // 本来はここで計算結果を出し、LINEに送ります
-            alert(`【調整開始】\n期間: ${start}〜${end}\nこの内容でLINEに送信しますか？`);
+        function toggleMember(m, isAdd) {
+            if(isAdd) selected.add(m); else { selected.delete(m); priorities.delete(m); }
+            updateSelectedView();
         }
+
+        function toggleGroup(g, isAdd) {
+            groups[g].forEach(m => isAdd ? selected.add(m) : (selected.delete(m), priorities.delete(m)));
+            updateSelectedView();
+        }
+
+        function updateSelectedView() {
+            const area = document.getElementById('selected-list');
+            if(selected.size === 0) { area.innerHTML = '<p style="text-align:center; font-size:0.8rem;">メンバー未選択</p>'; return; }
+            area.innerHTML = Array.from(selected).map(m => `
+                <div class="selected-member">
+                    <span>${m}</span>
+                    <button class="prio-btn ${priorities.has(m)?'active':''}" onclick="togglePrio('${m}')">
+                        ${priorities.has(m)?'★ 優先中':'★ 優先にする'}
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function togglePrio(m) {
+            if(priorities.has(m)) priorities.delete(m); else priorities.add(m);
+            updateSelectedView();
+        }
+
+        // 時間帯24時間分を細かく生成
+        const grid = document.getElementById('time-grid');
+        for(let h=6; h<24; h+=2) {
+            grid.innerHTML += `<div class="time-item"><input type="checkbox" value="${h}:00"> ${h}:00 〜 ${h+2}:00</div>`;
+        }
+
+        function requestCalculation() {
+            const start = document.getElementById('start').value;
+            if(!start || selected.size === 0) { alert("期間とメンバーを選んでください"); return; }
+            alert("算出を開始します。結果はLINEトーク画面で回答します！");
+        }
+
+        renderLists();
     </script>
 </body>
 </html>
