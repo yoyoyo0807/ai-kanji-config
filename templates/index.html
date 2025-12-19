@@ -47,13 +47,12 @@
     </div>
 
     <script>
-        const LIFF_ID = "2008718467-wSHMbZKY"; // 発行されたID
+        const LIFF_ID = "2008718467-wSHMbZKY"; 
         const members = Array.from({length: 20}, (_, i) => `メンバー${i+1}`);
-        const groups = { 'グループA': ['リーダーA', '会員A1', '会員A2'], 'グループB': ['リーダーB', '会員B1', '会員B2'] };
+        const groups = { 'グループA': ['メンバー1', 'メンバー2', 'メンバー3'], 'グループB': ['メンバー4', 'メンバー5', 'メンバー6'] };
         let selected = new Set();
         let priorities = new Set();
 
-        // LIFF初期化
         liff.init({ liffId: LIFF_ID }).then(() => {
             if (!liff.isLoggedIn()) liff.login();
         }).catch(err => console.error(err));
@@ -94,7 +93,7 @@
         const grid = document.getElementById('time-grid');
         for(let h=6; h<24; h+=2) grid.innerHTML += `<div class="time-item"><input type="checkbox" name="t-check" value="${h}:00"> ${h}:00〜${h+2}:00</div>`;
 
-        function requestCalculation() {
+        async function requestCalculation() {
             const start = document.getElementById('start').value;
             const end = document.getElementById('end').value;
             const tChecked = Array.from(document.querySelectorAll('input[name="t-check"]:checked')).map(e => e.value);
@@ -103,9 +102,13 @@
 
             const msg = `調整開始\n期間：${start}〜${end}\n参加：${Array.from(selected).join(',')}\n優先：${Array.from(priorities).join(',')}\n時間：${tChecked.join(',')}`;
 
-            liff.sendMessages([{ type: 'text', text: msg }])
-                .then(() => liff.closeWindow())
-                .catch(err => alert("送信失敗: " + err));
+            if (liff.isApiAvailable('shareTargetPicker')) {
+                liff.shareTargetPicker([{ 'type': 'text', 'text': msg }])
+                    .then(() => liff.closeWindow())
+                    .catch(err => console.log("Picker closed"));
+            } else {
+                liff.sendMessages([{ type: 'text', text: msg }]).then(() => liff.closeWindow());
+            }
         }
         renderLists();
     </script>
