@@ -9,9 +9,7 @@
         body { font-family: -apple-system, sans-serif; background: #f4f5f7; margin: 0; padding: 15px; padding-bottom: 120px; }
         .container { max-width: 500px; margin: auto; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         .section-title { font-size: 0.95rem; font-weight: bold; border-left: 4px solid #00b900; padding-left: 10px; margin: 20px 0 10px; }
-        .required { color: #ff0000; font-size: 0.7rem; vertical-align: middle; margin-left: 5px; border: 1px solid #ff0000; border-radius: 3px; padding: 1px 3px; }
         input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin: 5px 0; box-sizing: border-box; font-size: 1rem; }
-        .date-row { display: flex; align-items: center; gap: 10px; }
         .btn-submit { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; background: #00b900; color: white; border: none; padding: 18px; border-radius: 30px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; }
         .btn-submit:disabled { background: #ccc; }
     </style>
@@ -19,16 +17,12 @@
 <body>
     <div class="container">
         <h1>📅 イベントを作成</h1>
-        <div class="section-title">イベント名<span class="required">必須</span></div>
+        <div class="section-title">イベント名</div>
         <input type="text" id="title" placeholder="例：忘年会">
-        <div class="section-title">開催期間<span class="required">必須</span></div>
-        <div class="date-row">
+        <div class="section-title">開催期間</div>
+        <div style="display:flex; align-items:center; gap:10px;">
             <input type="date" id="start"> 〜 <input type="date" id="end">
         </div>
-        <div class="section-title">開催地（任意）</div>
-        <input type="text" id="location" placeholder="例：新宿駅付近">
-        <div class="section-title">内容・メモ（任意）</div>
-        <textarea id="note" rows="3" placeholder="詳細など"></textarea>
         <button class="btn-submit" id="main-btn" onclick="sendInvitation()" disabled>読み込み中...</button>
     </div>
 
@@ -45,16 +39,12 @@
 
         async function sendInvitation() {
             const title = document.getElementById('title').value;
-            const start = document.getElementById('start').value;
-            const end = document.getElementById('end').value;
-            const location = document.getElementById('location').value || "未定";
-            const note = document.getElementById('note').value || "特になし";
-            
-            if(!title || !start || !end) { alert("必須項目を入力してください"); return; }
+            if(!title) { alert("イベント名を入力してください"); return; }
 
-            // 🚀 外部ブラウザ強制起動フラグを付与したURLを生成
-            const joinUrl = `https://liff.line.me/${LIFF_ID}/answer?res=yes&title=${encodeURIComponent(title)}&openExternalBrowser=1`;
-            const noUrl = `https://liff.line.me/${LIFF_ID}/answer?res=no&openExternalBrowser=1`;
+            // 🚀 重要：LIFF経由ではなくRenderのURLを直接指定し、外部ブラウザを強制起動させる
+            const baseUrl = "https://ai-kanji-config-1.onrender.com/answer";
+            const joinUrl = `${baseUrl}?res=yes&title=${encodeURIComponent(title)}&openExternalBrowser=1`;
+            const noUrl = `${baseUrl}?res=no&openExternalBrowser=1`;
 
             if (liff.isApiAvailable('shareTargetPicker')) {
                 liff.shareTargetPicker([{
@@ -67,18 +57,7 @@
                             "contents": [
                                 {"type": "text", "text": "📅 日程調整の招待", "weight": "bold", "size": "sm", "color": "#00b900"},
                                 {"type": "text", "text": title, "weight": "bold", "size": "xl", "margin": "md", "wrap": true},
-                                {"type": "separator", "margin": "lg"},
-                                {"type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
-                                    {"type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                                        {"type": "text", "text": "期間", "color": "#aaaaaa", "size": "sm", "flex": 1},
-                                        {"type": "text", "text": `${start} 〜 ${end}`, "wrap": true, "color": "#666666", "size": "sm", "flex": 4}
-                                    ]},
-                                    {"type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                                        {"type": "text", "text": "場所", "color": "#aaaaaa", "size": "sm", "flex": 1},
-                                        {"type": "text", "text": location, "wrap": true, "color": "#666666", "size": "sm", "flex": 4}
-                                    ]}
-                                ]},
-                                {"type": "text", "text": "⚠️ 回答期限: 12時間以内", "size": "xs", "color": "#ff0000", "margin": "xl", "weight": "bold", "align": "center"}
+                                {"type": "separator", "margin": "lg"}
                             ]
                         },
                         "footer": {
