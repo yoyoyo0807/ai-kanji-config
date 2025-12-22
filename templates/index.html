@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI幹事くん - 日程調整作成</title>
+    <title>AI幹事くん - 日程調整</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f5f7; margin: 0; padding: 15px; padding-bottom: 100px; }
         .container { max-width: 500px; margin: auto; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         .section-title { font-size: 0.95rem; font-weight: bold; border-left: 4px solid #00b900; padding-left: 10px; margin: 25px 0 10px; }
-        input[type="date"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin: 5px 0; box-sizing: border-box; }
-        .btn-submit { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; background: #00b900; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; }
-        .note { font-size: 0.8rem; color: #666; margin-top: 10px; }
+        input[type="date"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin: 5px 0; box-sizing: border-box; font-size: 1rem; }
+        .btn-submit { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; background: #00b900; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; transition: opacity 0.3s; }
+        .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+        .note { font-size: 0.8rem; color: #666; margin-top: 10px; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -20,65 +21,94 @@
         
         <div class="section-title">1. 開催期間を選択</div>
         <input type="date" id="start"> 〜 <input type="date" id="end">
-        <p class="note">※この期間内で、みんなが一番集まれる時間をAIが探します。</p>
+        <p class="note">※AIがこの期間内の全員の空き時間を自動算出します。</p>
 
-        <div class="section-title">2. 招待メッセージ</div>
-        <p class="note">次の画面で招待したいメンバーやグループを選択してください。回答期限は送信から12時間となります。</p>
+        <div class="section-title">2. 招待メッセージの送信</div>
+        <p class="note">「メンバーを選んで招待を送る」を押すと、LINEの友だち選択画面が開きます。<br>回答期限は送信から<b>12時間</b>です。</p>
 
-        <button class="btn-submit" onclick="sendInvitation()">メンバーを選んで招待を送る</button>
+        <button class="btn-submit" id="main-btn" onclick="sendInvitation()" disabled>読み込み中...</button>
     </div>
 
     <script>
         const LIFF_ID = "2008718467-wSHMbZKY";
         let myProfile = null;
 
+        // LIFFの初期化
         liff.init({ liffId: LIFF_ID }).then(async () => {
-            if (!liff.isLoggedIn()) liff.login();
-            myProfile = await liff.getProfile();
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            } else {
+                myProfile = await liff.getProfile();
+                const btn = document.getElementById('main-btn');
+                btn.disabled = false;
+                btn.innerText = "メンバーを選んで招待を送る";
+            }
+        }).catch(err => {
+            alert("LIFF初期化失敗: " + err.message);
         });
 
         async function sendInvitation() {
             const start = document.getElementById('start').value;
             const end = document.getElementById('end').value;
-            if(!start || !end) { alert("期間を正しく選択してください"); return; }
+            
+            if(!start || !end) {
+                alert("開催期間を選択してください");
+                return;
+            }
 
-            if (liff.isApiAvailable('shareTargetPicker')) {
-                liff.shareTargetPicker([
-                    {
-                        "type": "flex",
-                        "altText": "日程調整の招待状が届きました",
-                        "contents": {
-                            "type": "bubble",
-                            "body": {
-                                "type": "box", "layout": "vertical",
-                                "contents": [
-                                    {"type": "text", "text": "📅 日程調整の招待", "weight": "bold", "size": "xl", "color": "#00b900"},
-                                    {"type": "text", "text": `${myProfile.displayName}さんからイベントのお誘いです！`, "size": "sm", "margin": "md", "wrap": true},
-                                    {"type": "separator", "margin": "lg"},
-                                    {"type": "box", "layout": "vertical", "margin": "lg", "contents": [
-                                        {"type": "text", "text": "希望期間", "size": "xs", "color": "#888888"},
-                                        {"type": "text", "text": `${start} 〜 ${end}`, "size": "md", "weight": "bold"}
-                                    ]},
-                                    {"type": "text", "text": "⚠️ 回答期限: 12時間以内", "size": "xs", "color": "#ff0000", "margin": "md"}
-                                ]
-                            },
-                            "footer": {
-                                "type": "box", "layout": "vertical", "spacing": "sm",
-                                "contents": [
-                                    {
-                                        "type": "button", "style": "primary", "color": "#00b900",
-                                        "action": { "type": "uri", "label": "✅ 参加する", "uri": liff.getOrigin() + "/answer?res=yes&host=" + myProfile.displayName }
-                                    },
-                                    {
-                                        "type": "button", "style": "secondary",
-                                        "action": { "type": "uri", "label": "❌ 行けない", "uri": liff.getOrigin() + "/answer?res=no" }
+            // 権限確認
+            if (!liff.isApiAvailable('shareTargetPicker')) {
+                alert("シェアターゲットピッカーが利用できません。管理画面で『shareTargetPicker』にチェックが入っているか、ブラウザをリロードして確認してください。");
+                return;
+            }
+
+            liff.shareTargetPicker([
+                {
+                    "type": "flex",
+                    "altText": "日程調整の招待状が届きました",
+                    "contents": {
+                        "type": "bubble",
+                        "body": {
+                            "type": "box", "layout": "vertical",
+                            "contents": [
+                                {"type": "text", "text": "📅 日程調整の招待", "weight": "bold", "size": "xl", "color": "#00b900"},
+                                {"type": "text", "text": `${myProfile.displayName}さんからお誘いです！`, "size": "sm", "margin": "md", "wrap": true},
+                                {"type": "separator", "margin": "lg"},
+                                {"type": "box", "layout": "vertical", "margin": "lg", "contents": [
+                                    {"type": "text", "text": "希望期間", "size": "xs", "color": "#888888"},
+                                    {"type": "text", "text": `${start} 〜 ${end}`, "size": "md", "weight": "bold"}
+                                ]},
+                                {"type": "text", "text": "⚠️ 回答期限: 12時間以内", "size": "xs", "color": "#ff0000", "margin": "md", "weight": "bold"}
+                            ]
+                        },
+                        "footer": {
+                            "type": "box", "layout": "vertical", "spacing": "sm",
+                            "contents": [
+                                {
+                                    "type": "button", "style": "primary", "color": "#00b900",
+                                    "action": { 
+                                        "type": "uri", 
+                                        "label": "✅ 参加する", 
+                                        "uri": `https://liff.line.me/${LIFF_ID}/answer?res=yes&host=${encodeURIComponent(myProfile.displayName)}` 
                                     }
-                                ]
-                            }
+                                },
+                                {
+                                    "type": "button", "style": "secondary",
+                                    "action": { 
+                                        "type": "uri", 
+                                        "label": "❌ 行けない", 
+                                        "uri": `https://liff.line.me/${LIFF_ID}/answer?res=no` 
+                                    }
+                                }
+                            ]
                         }
                     }
-                ]).then(() => liff.closeWindow()).catch(err => console.error(err));
-            }
+                }
+            ]).then((res) => {
+                if (res) liff.closeWindow(); // 送信成功したら閉じる
+            }).catch(err => {
+                alert("送信エラー: " + err.message);
+            });
         }
     </script>
 </body>
