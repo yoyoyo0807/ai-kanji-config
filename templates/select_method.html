@@ -15,14 +15,13 @@
 </head>
 <body>
     <div class="card">
-        <h2 style="color:#00b900;">✅ 参加ありがとうございます！</h2>
-        <p>「{{ title }}」への参加予定を共有する方法を選んでください。</p>
+        <h2 style="color:#00b900;">✅ 参加確認</h2>
+        <p>「{{ title }}」の空き時間を共有する方法を選んでください。</p>
         
-        <a href="/auth/google" class="btn btn-google">Goolgeカレンダーと連携</a>
-        <p class="note">※自動で空き時間を計算します。最もおすすめの方法です。</p>
+        <a href="/auth/google?openExternalBrowser=1" class="btn btn-google">Googleカレンダーと連携</a>
+        <p class="note">※自動で空き時間を計算します。</p>
 
         <a href="/manual_input" class="btn btn-manual">手動で予定を入力する</a>
-        <p class="note">※カレンダーを使わずに、自分で空いている日時を選びます。</p>
     </div>
 </body>
 </html>
