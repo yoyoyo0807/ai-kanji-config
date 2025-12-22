@@ -3,140 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高度な日程調整ツール</title>
+    <title>AI幹事くん - 日程調整作成</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f5f7; margin: 0; padding: 15px; padding-bottom: 100px; }
         .container { max-width: 500px; margin: auto; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         .section-title { font-size: 0.95rem; font-weight: bold; border-left: 4px solid #00b900; padding-left: 10px; margin: 25px 0 10px; }
-        .tab-container { display: flex; border-bottom: 2px solid #eee; margin-bottom: 10px; }
-        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #888; }
-        .tab.active { color: #00b900; border-bottom: 2px solid #00b900; font-weight: bold; }
-        .list-box { border: 1px solid #eee; border-radius: 12px; max-height: 200px; overflow-y: auto; background: #fafafa; margin-bottom: 15px; }
-        .list-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
-        .user-info { display: flex; align-items: center; }
-        .user-icon { width: 35px; height: 35px; border-radius: 50%; margin-right: 12px; border: 1px solid #ddd; object-fit: cover; }
-        .selected-area { background: #eef9ee; border: 2px solid #00b900; border-radius: 12px; padding: 12px; margin-bottom: 20px; }
-        .selected-member { display: flex; align-items: center; justify-content: space-between; background: white; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-size: 0.85rem; }
-        .prio-btn { background: #ddd; border: none; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; cursor: pointer; }
-        .prio-btn.active { background: #ffcf00; font-weight: bold; }
-        .time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .time-item { background: #f9f9f9; padding: 8px; border-radius: 8px; border: 1px solid #eee; font-size: 0.8rem; }
-        button#submit-btn { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; background: #00b900; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        input[type="date"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin: 5px 0; box-sizing: border-box; }
+        .btn-submit { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; background: #00b900; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; }
+        .note { font-size: 0.8rem; color: #666; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📅 日程調整を作成</h1>
+        <h1>📅 新規イベント作成</h1>
         
         <div class="section-title">1. 開催期間を選択</div>
         <input type="date" id="start"> 〜 <input type="date" id="end">
+        <p class="note">※この期間内で、みんなが一番集まれる時間をAIが探します。</p>
 
-        <div class="section-title">2. 参加メンバーを選択</div>
-        <div class="tab-container">
-            <div class="tab active" id="t-f" onclick="show('f')">友だち</div>
-            <div class="tab" id="t-g" onclick="show('g')">グループ</div>
-        </div>
-        <div class="list-box" id="f-list">
-            <p style="text-align:center; padding:20px; color:#999; font-size:0.8rem;">読み込み中...</p>
-        </div>
-        <div class="list-box" id="g-list" style="display:none;">
-            <p style="text-align:center; padding:20px; color:#999; font-size:0.8rem;">グループで開くと表示されます</p>
-        </div>
+        <div class="section-title">2. 招待メッセージ</div>
+        <p class="note">次の画面で招待したいメンバーやグループを選択してください。回答期限は送信から12時間となります。</p>
 
-        <div class="section-title">3. 優先メンバー（★をタップ）</div>
-        <div class="selected-area" id="selected-list">
-            <p style="font-size:0.75rem; text-align:center; color:#666;">メンバー未選択</p>
-        </div>
-
-        <div class="section-title">4. 希望する時間帯</div>
-        <div class="time-grid" id="time-grid"></div>
-
-        <button id="submit-btn" onclick="requestCalculation()">最適な日程を算出する</button>
+        <button class="btn-submit" onclick="sendInvitation()">メンバーを選んで招待を送る</button>
     </div>
 
     <script>
-        const LIFF_ID = "2008718467-wSHMbZKY"; 
-        let selected = new Set();
-        let priorities = new Set();
-        let myInfo = null;
+        const LIFF_ID = "2008718467-wSHMbZKY";
+        let myProfile = null;
 
         liff.init({ liffId: LIFF_ID }).then(async () => {
-            if (!liff.isLoggedIn()) {
-                liff.login();
-            } else {
-                // ✨ あなたのプロフィール（名前とアイコン）を取得
-                myInfo = await liff.getProfile();
-                renderFList([{ name: myInfo.displayName, pic: myInfo.pictureUrl }]);
-            }
-        }).catch(err => console.error(err));
+            if (!liff.isLoggedIn()) liff.login();
+            myProfile = await liff.getProfile();
+        });
 
-        function show(t) {
-            document.getElementById('t-f').classList.toggle('active', t==='f');
-            document.getElementById('t-g').classList.toggle('active', t==='g');
-            document.getElementById('f-list').style.display = t==='f' ? 'block' : 'none';
-            document.getElementById('g-list').style.display = t==='g' ? 'block' : 'none';
-        }
-
-        // リストを表示する関数
-        function renderFList(users) {
-            const list = document.getElementById('f-list');
-            // あなた自身の情報 ＋ ダミーの「友だちを招待」的な項目を表示
-            let html = users.map(u => `
-                <div class="list-item">
-                    <div class="user-info">
-                        <img src="${u.pic || 'https://via.placeholder.com/150'}" class="user-icon">
-                        <span>${u.name} (自分)</span>
-                    </div>
-                    <input type="checkbox" onchange="toggleM('${u.name}', this.checked)">
-                </div>
-            `).join('');
-            
-            html += `<div style="text-align:center; padding:15px; font-size:0.8rem; color:#00b900;">＋ 他の友だちは送信時に選べます</div>`;
-            list.innerHTML = html;
-        }
-
-        function toggleM(m, isAdd) {
-            if(isAdd) selected.add(m); else { selected.delete(m); priorities.delete(m); }
-            updateV();
-        }
-
-        function updateV() {
-            const area = document.getElementById('selected-list');
-            if(selected.size === 0) { area.innerHTML = '<p style="text-align:center; font-size:0.8rem;">メンバー未選択</p>'; return; }
-            area.innerHTML = Array.from(selected).map(m => `
-                <div class="selected-member">
-                    <span>${m}</span>
-                    <button class="prio-btn ${priorities.has(m)?'active':''}" onclick="toggleP('${m}')">
-                        ${priorities.has(m)?'★ 優先中':'★ 優先にする'}
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        function toggleP(m) {
-            if(priorities.has(m)) priorities.delete(m); else priorities.add(m);
-            updateV();
-        }
-
-        const grid = document.getElementById('time-grid');
-        for(let h=6; h<24; h+=2) grid.innerHTML += `<div class="time-item"><input type="checkbox" name="t-check" value="${h}:00"> ${h}:00〜${h+2}:00</div>`;
-
-        async function requestCalculation() {
+        async function sendInvitation() {
             const start = document.getElementById('start').value;
             const end = document.getElementById('end').value;
-            const tChecked = Array.from(document.querySelectorAll('input[name="t-check"]:checked')).map(e => e.value);
-            
-            if(!start || selected.size === 0) { alert("期間とメンバーを選んでください"); return; }
-
-            const msg = `調整開始\n期間：${start}〜${end}\n参加：${Array.from(selected).join(',')}\n優先：${Array.from(priorities).join(',')}\n時間：${tChecked.join(',')}`;
+            if(!start || !end) { alert("期間を正しく選択してください"); return; }
 
             if (liff.isApiAvailable('shareTargetPicker')) {
-                liff.shareTargetPicker([{ 'type': 'text', 'text': msg }])
-                    .then(() => liff.closeWindow())
-                    .catch(err => console.log("Picker closed"));
-            } else {
-                liff.sendMessages([{ type: 'text', text: msg }]).then(() => liff.closeWindow());
+                liff.shareTargetPicker([
+                    {
+                        "type": "flex",
+                        "altText": "日程調整の招待状が届きました",
+                        "contents": {
+                            "type": "bubble",
+                            "body": {
+                                "type": "box", "layout": "vertical",
+                                "contents": [
+                                    {"type": "text", "text": "📅 日程調整の招待", "weight": "bold", "size": "xl", "color": "#00b900"},
+                                    {"type": "text", "text": `${myProfile.displayName}さんからイベントのお誘いです！`, "size": "sm", "margin": "md", "wrap": true},
+                                    {"type": "separator", "margin": "lg"},
+                                    {"type": "box", "layout": "vertical", "margin": "lg", "contents": [
+                                        {"type": "text", "text": "希望期間", "size": "xs", "color": "#888888"},
+                                        {"type": "text", "text": `${start} 〜 ${end}`, "size": "md", "weight": "bold"}
+                                    ]},
+                                    {"type": "text", "text": "⚠️ 回答期限: 12時間以内", "size": "xs", "color": "#ff0000", "margin": "md"}
+                                ]
+                            },
+                            "footer": {
+                                "type": "box", "layout": "vertical", "spacing": "sm",
+                                "contents": [
+                                    {
+                                        "type": "button", "style": "primary", "color": "#00b900",
+                                        "action": { "type": "uri", "label": "✅ 参加する", "uri": liff.getOrigin() + "/answer?res=yes&host=" + myProfile.displayName }
+                                    },
+                                    {
+                                        "type": "button", "style": "secondary",
+                                        "action": { "type": "uri", "label": "❌ 行けない", "uri": liff.getOrigin() + "/answer?res=no" }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]).then(() => liff.closeWindow()).catch(err => console.error(err));
             }
         }
     </script>
