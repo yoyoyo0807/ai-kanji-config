@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>参加方法の選択</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 20px; text-align: center; }
+        .card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .btn { display: block; width: 100%; padding: 15px; margin: 15px 0; border-radius: 30px; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; text-decoration: none; }
+        .btn-google { background: #4285F4; color: white; }
+        .btn-manual { background: #00b900; color: white; }
+        .note { font-size: 0.8rem; color: #888; text-align: left; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="color:#00b900;">✅ 参加ありがとうございます！</h2>
+        <p>「{{ title }}」への参加予定を共有する方法を選んでください。</p>
+        
+        <a href="/auth/google" class="btn btn-google">Goolgeカレンダーと連携</a>
+        <p class="note">※自動で空き時間を計算します。最もおすすめの方法です。</p>
+
+        <a href="/manual_input" class="btn btn-manual">手動で予定を入力する</a>
+        <p class="note">※カレンダーを使わずに、自分で空いている日時を選びます。</p>
+    </div>
+</body>
+</html>
