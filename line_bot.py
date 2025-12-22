@@ -21,7 +21,6 @@ line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # --- Google設定 ---
-# Renderの環境変数 GOOGLE_CREDENTIALS_JSON から読み込む
 google_creds_raw = os.environ.get('GOOGLE_CREDENTIALS_JSON')
 CLIENT_CONFIG = json.loads(google_creds_raw) if google_creds_raw else {}
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
@@ -47,7 +46,7 @@ def answer():
         """
     return render_template('select_method.html', title=title)
 
-# --- 🚀 修正：外部ブラウザを強制起動する処理 ---
+# --- 🚀 修正：JavaScriptで外部ブラウザを強制起動する処理 ---
 @app.route("/auth/google")
 def auth_google():
     flow = Flow.from_client_config(
@@ -56,17 +55,28 @@ def auth_google():
         redirect_uri="https://ai-kanji-config-1.onrender.com/callback/google"
     )
     
-    # 認証URLを生成
     authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
     
-    # URLに「openExternalBrowser=1」を付与して、LINE内ブラウザではなくSafari/Chromeを起動させる
+    # URLに「openExternalBrowser=1」を付与
     separator = "&" if "?" in authorization_url else "?"
     external_url = f"{authorization_url}{separator}openExternalBrowser=1"
     
-    return redirect(external_url)
+    # 💡 redirect()を使わず、JSで外部ブラウザ起動をトリガーするHTMLを返す
+    return f"""
+    <html>
+        <head><script>window.location.href = "{external_url}";</script></head>
+        <body style="text-align:center; padding-top:50px; font-family:sans-serif; background:#f4f5f7;">
+            <div style="background:white; margin:20px; padding:30px; border-radius:16px; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
+                <p>Googleログイン画面へ移動しています...</p>
+                <p style="font-size:0.8rem; color:#888;">自動で切り替わらない場合は<a href="{external_url}">こちら</a>をクリックしてください。</p>
+            </div>
+        </body>
+    </html>
+    """
 
 @app.route("/callback/google")
 def callback_google():
+    # 認証レスポンスURLからトークンを取得
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
@@ -74,7 +84,6 @@ def callback_google():
     )
     flow.fetch_token(authorization_response=request.url)
     
-    # ここで成功画面を表示
     return """
     <html><head><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
     <body style="text-align:center; padding-top:50px; font-family:sans-serif; background:#f4f5f7;">
@@ -98,7 +107,7 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    # ここに調整結果の計算ロジックなどを後ほど拡張します
+    # ここに将来的に調整結果を表示するロジックを追加
     pass
 
 if __name__ == "__main__":
