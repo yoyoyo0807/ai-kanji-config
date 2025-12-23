@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手動で日程を入力</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 20px; text-align: center; color: #333; }
+        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        .instruction { font-size: 0.9rem; color: #666; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+        .time-btn { border: 2px solid #ddd; padding: 15px; border-radius: 12px; cursor: pointer; background: white; font-weight: bold; transition: 0.2s; }
+        .time-btn.selected { border-color: #00b900; background: #eaffea; color: #00b900; }
+        .submit-btn { width: 100%; padding: 18px; background: #00b900; color: white; border: none; border-radius: 35px; font-weight: bold; font-size: 1.1rem; cursor: pointer; box-shadow: 0 4px 10px rgba(0,185,0,0.3); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="color:#00b900;">📅 空き時間の入力</h2>
+        <p class="instruction">あなたが参加可能な時間帯をタップして選んでください。</p>
+        
+        <div class="grid" id="dateGrid">
+            <div class="time-btn" onclick="toggle(this)">12/24 (水)<br>18:00〜</div>
+            <div class="time-btn" onclick="toggle(this)">12/25 (木)<br>12:00〜</div>
+            <div class="time-btn" onclick="toggle(this)">12/25 (木)<br>19:00〜</div>
+            <div class="time-btn" onclick="toggle(this)">12/26 (金)<br>19:00〜</div>
+        </div>
+
+        <button class="submit-btn" onclick="submit()">回答を送信する</button>
+    </div>
+
+    <script>
+        function toggle(el) { el.classList.toggle('selected'); }
+        function submit() {
+            const selected = document.querySelectorAll('.selected').length;
+            if(selected === 0) {
+                alert("空いている時間を1つ以上選んでください。");
+                return;
+            }
+            alert("回答を送信しました！AIが全員の回答を集計します。");
+            window.close();
+        }
+    </script>
+</body>
+</html>
