@@ -12,33 +12,27 @@
         .required { color: #ff0000; font-size: 0.7rem; vertical-align: middle; margin-left: 5px; border: 1px solid #ff0000; border-radius: 3px; padding: 1px 3px; }
         input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin: 5px 0; box-sizing: border-box; font-size: 1rem; }
         .btn-submit { width: 100%; background: #00b900; color: white; border: none; padding: 18px; border-radius: 30px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 20px; }
-        .btn-submit:disabled { background: #ccc; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📅 イベントを作成</h1>
-        
         <div class="section-title">イベント名<span class="required">必須</span></div>
         <input type="text" id="title" placeholder="例：忘年会">
-        
         <div class="section-title">開催期間<span class="required">必須</span></div>
         <div style="display:flex; align-items:center; gap:10px;">
             <input type="date" id="start"> 〜 <input type="date" id="end">
         </div>
-        
         <div class="section-title">開催地（任意）</div>
-        <input type="text" id="location" placeholder="例：新宿駅付近の居酒屋">
-        
+        <input type="text" id="location" placeholder="例：新宿駅付近">
         <div class="section-title">メモ（任意）</div>
-        <textarea id="memo" rows="3" placeholder="会費や詳細など"></textarea>
-        
+        <textarea id="memo" rows="3" placeholder="詳細など"></textarea>
         <button class="btn-submit" id="main-btn" onclick="sendInvitation()" disabled>読み込み中...</button>
     </div>
 
     <script>
         const LIFF_ID = "2008718467-wSHMbZKY";
-        liff.init({ liffId: LIFF_ID }).then(async () => {
+        liff.init({ liffId: LIFF_ID }).then(() => {
             if (!liff.isLoggedIn()) liff.login();
             document.getElementById('main-btn').disabled = false;
             document.getElementById('main-btn').innerText = "招待を送る";
@@ -49,12 +43,13 @@
             const start = document.getElementById('start').value;
             const end = document.getElementById('end').value;
             const location = document.getElementById('location').value || "未定";
-            const memo = document.getElementById('memo').value || "特になし";
+            const memo = document.getElementById('memo').value || "なし";
             
-            if(!title || !start || !end) { alert("イベント名と期間を入力してください"); return; }
+            if(!title || !start || !end) { alert("必須項目を入力してください"); return; }
 
+            // 🚀 start と end をURLに含める
             const baseUrl = "https://ai-kanji-config-1.onrender.com/answer";
-            const joinUrl = `${baseUrl}?res=yes&title=${encodeURIComponent(title)}&openExternalBrowser=1`;
+            const joinUrl = `${baseUrl}?res=yes&title=${encodeURIComponent(title)}&start=${start}&end=${end}&openExternalBrowser=1`;
 
             if (liff.isApiAvailable('shareTargetPicker')) {
                 const context = await liff.getContext();
@@ -80,19 +75,13 @@
                                     {"type": "box", "layout": "baseline", "spacing": "sm", "contents": [
                                         {"type": "text", "text": "期間", "color": "#aaaaaa", "size": "sm", "flex": 1},
                                         {"type": "text", "text": `${start} 〜 ${end}`, "wrap": true, "color": "#666666", "size": "sm", "flex": 4}
-                                    ]},
-                                    {"type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                                        {"type": "text", "text": "メモ", "color": "#aaaaaa", "size": "sm", "flex": 1},
-                                        {"type": "text", "text": memo, "wrap": true, "color": "#666666", "size": "sm", "flex": 4}
                                     ]}
                                 ]}
                             ]
                         },
                         "footer": {
                             "type": "box", "layout": "vertical",
-                            "contents": [
-                                { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "回答する", "uri": joinUrl } }
-                            ]
+                            "contents": [{ "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "回答する", "uri": joinUrl } }]
                         }
                     }
                 }]).then(() => liff.closeWindow());
