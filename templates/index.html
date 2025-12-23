@@ -6,86 +6,111 @@
     <title>AI幹事くん - イベント作成</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f4f5f7; margin: 0; padding: 15px; }
+        body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 15px; color: #333; }
         .container { max-width: 500px; margin: auto; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        .section-title { font-size: 0.95rem; font-weight: bold; border-left: 4px solid #00b900; padding-left: 10px; margin: 20px 0 10px; }
-        .required { color: #ff0000; font-size: 0.7rem; vertical-align: middle; margin-left: 5px; border: 1px solid #ff0000; border-radius: 3px; padding: 1px 3px; }
-        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin: 5px 0; box-sizing: border-box; font-size: 1rem; }
-        .btn-submit { width: 100%; background: #00b900; color: white; border: none; padding: 18px; border-radius: 30px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 20px; }
+        h1 { font-size: 1.5rem; color: #00b900; text-align: center; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #666; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        .req { color: #ff4d4f; margin-left: 3px; }
+        .btn-submit { width: 100%; background: #00b900; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; font-size: 1.1rem; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 10px rgba(0,185,0,0.2); }
+        .btn-submit:disabled { background: #ccc; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📅 イベントを作成</h1>
-        <div class="section-title">イベント名<span class="required">必須</span></div>
-        <input type="text" id="title" placeholder="例：忘年会">
-        <div class="section-title">開催期間<span class="required">必須</span></div>
-        <div style="display:flex; align-items:center; gap:10px;">
-            <input type="date" id="start"> 〜 <input type="date" id="end">
+        
+        <div class="input-group">
+            <label>イベント名<span class="req">*</span></label>
+            <input type="text" id="title" placeholder="例：忘年会">
         </div>
-        <div class="section-title">開催地（任意）</div>
-        <input type="text" id="location" placeholder="例：新宿駅付近">
-        <div class="section-title">メモ（任意）</div>
-        <textarea id="memo" rows="3" placeholder="詳細など"></textarea>
+
+        <div class="input-group">
+            <label>開催予定期間<span class="req">*</span></label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="date" id="start"> <span>〜</span> <input type="date" id="end">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>予定開催時間 (例: 19:00〜21:00)<span class="req">*</span></label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="time" id="time_start" value="19:00"> <span>〜</span> <input type="time" id="time_end" value="21:00">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>開催予定地 (任意)</label>
+            <input type="text" id="location" placeholder="例：新宿駅周辺">
+        </div>
+
+        <div class="input-group">
+            <label>メモ (任意)</label>
+            <textarea id="memo" rows="2" placeholder="詳細など"></textarea>
+        </div>
+
         <button class="btn-submit" id="main-btn" onclick="sendInvitation()" disabled>読み込み中...</button>
     </div>
 
     <script>
         const LIFF_ID = "2008718467-wSHMbZKY";
         liff.init({ liffId: LIFF_ID }).then(() => {
-            if (!liff.isLoggedIn()) liff.login();
             document.getElementById('main-btn').disabled = false;
-            document.getElementById('main-btn').innerText = "招待を送る";
+            document.getElementById('main-btn').innerText = "招待状を送る";
         });
 
         async function sendInvitation() {
             const title = document.getElementById('title').value;
             const start = document.getElementById('start').value;
             const end = document.getElementById('end').value;
-            const location = document.getElementById('location').value || "未定";
+            const t_start = document.getElementById('time_start').value;
+            const t_end = document.getElementById('time_end').value;
+            const loc = document.getElementById('location').value || "未定";
             const memo = document.getElementById('memo').value || "なし";
-            
-            if(!title || !start || !end) { alert("必須項目を入力してください"); return; }
 
-            // 🚀 start と end をURLに含める
-            const baseUrl = "https://ai-kanji-config-1.onrender.com/answer";
-            const joinUrl = `${baseUrl}?res=yes&title=${encodeURIComponent(title)}&start=${start}&end=${end}&openExternalBrowser=1`;
+            if(!title || !start || !end || !t_start || !t_end) { alert("必須項目を入力してください"); return; }
 
-            if (liff.isApiAvailable('shareTargetPicker')) {
-                const context = await liff.getContext();
-                const targetName = context.type === 'group' ? "グループの皆様" : "皆様";
+            const context = await liff.getContext();
+            const targetName = context.type === 'group' ? "グループの皆様" : "皆様";
+            const joinUrl = `https://ai-kanji-config-1.onrender.com/answer?title=${encodeURIComponent(title)}&time=${t_start}-${t_end}&loc=${encodeURIComponent(loc)}`;
 
-                liff.shareTargetPicker([{
-                    "type": "flex",
-                    "altText": `📅 ${title} の招待状`,
-                    "contents": {
-                        "type": "bubble",
-                        "body": {
-                            "type": "box", "layout": "vertical",
-                            "contents": [
-                                {"type": "text", "text": "📅 日程調整の招待", "weight": "bold", "color": "#00b900", "size": "sm"},
-                                {"type": "text", "text": title, "weight": "bold", "size": "xl", "margin": "md", "wrap": true},
-                                {"type": "text", "text": `招待先: ${targetName}`, "size": "xs", "color": "#888888", "margin": "sm"},
-                                {"type": "separator", "margin": "lg"},
-                                {"type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
-                                    {"type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                                        {"type": "text", "text": "場所", "color": "#aaaaaa", "size": "sm", "flex": 1},
-                                        {"type": "text", "text": location, "wrap": true, "color": "#666666", "size": "sm", "flex": 4}
-                                    ]},
-                                    {"type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                                        {"type": "text", "text": "期間", "color": "#aaaaaa", "size": "sm", "flex": 1},
-                                        {"type": "text", "text": `${start} 〜 ${end}`, "wrap": true, "color": "#666666", "size": "sm", "flex": 4}
-                                    ]}
+            liff.shareTargetPicker([{
+                "type": "flex",
+                "altText": `📅 ${title} の招待状`,
+                "contents": {
+                    "type": "bubble",
+                    "body": {
+                        "type": "box", "layout": "vertical",
+                        "contents": [
+                            {"type": "text", "text": "📅 日程調整の招待", "weight": "bold", "color": "#00b900", "size": "sm"},
+                            {"type": "text", "text": title, "weight": "bold", "size": "xl", "margin": "md", "wrap": true},
+                            {"type": "text", "text": `招待先: ${targetName}`, "size": "xs", "color": "#888888", "margin": "xs"},
+                            {"type": "separator", "margin": "lg"},
+                            {"type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
+                                {"type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                                    {"type": "text", "text": "時間", "color": "#aaaaaa", "size": "sm", "flex": 2},
+                                    {"type": "text", "text": `${t_start} 〜 ${t_end}`, "wrap": true, "color": "#333333", "size": "sm", "flex": 5}
+                                ]},
+                                {"type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                                    {"type": "text", "text": "期間", "color": "#aaaaaa", "size": "sm", "flex": 2},
+                                    {"type": "text", "text": `${start} 〜 ${end}`, "wrap": true, "color": "#333333", "size": "sm", "flex": 5}
+                                ]},
+                                {"type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                                    {"type": "text", "text": "場所", "color": "#aaaaaa", "size": "sm", "flex": 2},
+                                    {"type": "text", "text": loc, "wrap": true, "color": "#333333", "size": "sm", "flex": 5}
                                 ]}
-                            ]
-                        },
-                        "footer": {
-                            "type": "box", "layout": "vertical",
-                            "contents": [{ "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "回答する", "uri": joinUrl } }]
-                        }
+                            ]}
+                        ]
+                    },
+                    "footer": {
+                        "type": "box", "layout": "vertical",
+                        "contents": [
+                            { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "回答状況を見る・回答する", "uri": joinUrl } }
+                        ]
                     }
-                }]).then(() => liff.closeWindow());
-            }
+                }
+            }]).then(() => liff.closeWindow());
         }
     </script>
 </body>
