@@ -15,15 +15,13 @@
 <body>
     <div class="card">
         <h2 style="color:#00b900;">✅ 参加回答</h2>
-        <p>「{{ title }}」の空き時間を<br>共有する方法を選んでください。</p>
+        <p>「{{ title }}」の空き時間を共有する方法を選んでください。</p>
         
         <a href="/auth/google?openExternalBrowser=1" class="btn btn-google">Googleカレンダーと連携</a>
         
         <div style="margin: 20px 0; color: #aaa; font-size: 0.8rem;">または</div>
         
-        <a href="/manual_input?title={{ title }}" class="btn btn-manual">手動で予定を入力する</a>
-        
-        <p style="font-size:0.7rem; color:#888; margin-top:20px;">※Google連携は外部ブラウザで安全に行われます。</p>
+        <a href="/manual_input?title={{ title }}&start={{ start }}&end={{ end }}" class="btn btn-manual">手動で予定を入力する</a>
     </div>
 </body>
 </html>
