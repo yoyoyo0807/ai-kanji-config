@@ -6,22 +6,30 @@
     <title>回答方法の選択</title>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 20px; text-align: center; }
-        .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); max-width: 400px; margin: auto; }
-        .btn { display: block; width: 100%; padding: 18px; margin: 15px 0; border-radius: 35px; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; text-decoration: none; box-sizing: border-box; }
+        .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); max-width: 400px; margin: auto; }
+        .status-badge { background: #eaffea; padding: 12px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #c2f0c2; }
+        .btn { display: block; width: 100%; padding: 16px; margin: 12px 0; border-radius: 35px; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; text-decoration: none; box-sizing: border-box; }
         .btn-google { background: #4285F4; color: white; }
         .btn-manual { background: white; border: 2px solid #00b900; color: #00b900; }
+        .note { font-size: 0.75rem; color: #999; margin-top: 15px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 style="color:#00b900;">✅ 参加回答</h2>
-        <p>「{{ title }}」の空き時間を共有する方法を選んでください。</p>
+        <div class="status-badge">
+            <span style="font-size:0.8rem; color:#666;">現在の回答状況</span><br>
+            <strong style="font-size:1.4rem; color:#00b900;">1 名</strong> が回答済み
+        </div>
+
+        <h2 style="font-size:1.2rem; margin-bottom:10px;">「{{ title }}」<br>への回答方法を選択</h2>
         
-        <a href="/auth/google?openExternalBrowser=1" class="btn btn-google">Googleカレンダーと連携</a>
+        <a href="/auth/google?openExternalBrowser=1" class="btn btn-google">Google連携で自動回答</a>
         
-        <div style="margin: 20px 0; color: #aaa; font-size: 0.8rem;">または</div>
+        <div style="margin: 10px 0; color: #ccc; font-size: 0.8rem;">または</div>
         
-        <a href="/manual_input?title={{ title }}&start={{ start }}&end={{ end }}" class="btn btn-manual">手動で予定を入力する</a>
+        <a href="/manual_input" class="btn btn-manual">カレンダーを使わずに回答</a>
+
+        <p class="note">※Google連携は Safari や Chrome で開きます。<br>幹事に「予定の内容」は共有されません。</p>
     </div>
 </body>
 </html>
