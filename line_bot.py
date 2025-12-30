@@ -6,12 +6,17 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
 app = Flask(__name__)
+# Renderの環境変数から取得。未設定時のデフォルト値も設定。
 app.secret_key = os.environ.get('SECRET_KEY', 'kanji-ai-secret-key-2025')
 
 # Google設定
 google_creds_raw = os.environ.get('GOOGLE_CREDENTIALS_JSON')
 CLIENT_CONFIG = json.loads(google_creds_raw) if google_creds_raw else {}
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+
+# ---------------------------------------------------------
+# メイン画面・回答分岐
+# ---------------------------------------------------------
 
 @app.route("/")
 def index():
@@ -21,6 +26,7 @@ def index():
 def answer():
     res = request.args.get('res')
     title = request.args.get('title', 'イベント')
+    # 統計情報のダミー
     count = 1 
     if res == 'no':
         return """
@@ -38,9 +44,12 @@ def manual_input():
     title = request.args.get('title', 'イベント')
     return render_template('manual_input.html', title=title)
 
+# ---------------------------------------------------------
+# Google OAuth 連携
+# ---------------------------------------------------------
+
 @app.route("/auth/google")
 def auth_google():
-    # 審査対応：stateにタイトルなどを込めて認証後も引き継げるようにする
     title = request.args.get('title', 'イベント')
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
@@ -48,14 +57,13 @@ def auth_google():
         redirect_uri="https://ai-kanji-config-1.onrender.com/callback/google"
     )
     
-    # stateパラメータを使用してコンテキストを保持
+    # stateにタイトルを保持
     authorization_url, state = flow.authorization_url(
         access_type='offline', 
         include_granted_scopes='true',
         state=title
     )
     
-    # LINE外部ブラウザ対策
     separator = "&" if "?" in authorization_url else "?"
     external_url = f"{authorization_url}{separator}openExternalBrowser=1"
     
@@ -74,7 +82,7 @@ def auth_google():
 
 @app.route("/callback/google")
 def callback_google():
-    title = request.args.get('state', 'イベント') # auth_googleから引き継いだタイトル
+    title = request.args.get('state', 'イベント')
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
@@ -85,7 +93,6 @@ def callback_google():
     creds = flow.credentials
     service = build('calendar', 'v3', credentials=creds)
     
-    # 予定取得範囲
     now = datetime.datetime.utcnow().isoformat() + 'Z'
     time_max = (datetime.datetime.utcnow() + datetime.timedelta(days=14)).isoformat() + 'Z'
     
@@ -93,22 +100,32 @@ def callback_google():
                                         singleEvents=True, orderBy='startTime').execute()
     events = events_result.get('items', [])
 
-    # --- 判定用データの作成 ---
     busy_slots = []
     for event in events:
         start_raw = event['start'].get('dateTime', event['start'].get('date'))
-        # 日付と時間を判定しやすいキー（YYYY-MM-DD_HH:MM）に変換
         if 'T' in start_raw:
             dt_key = start_raw[:10] + "_" + start_raw[11:16]
             busy_slots.append(dt_key)
         else:
-            # 終日の予定
             busy_slots.append(start_raw[:10] + "_ALLDAY")
 
-    # 完成度向上のため、専用のテンプレートにデータを渡してレンダリング
-    return render_template('google_result.html', 
-                           title=title, 
-                           busy_slots=busy_slots)
+    return render_template('google_result.html', title=title, busy_slots=busy_slots)
+
+# ---------------------------------------------------------
+# Google審査対応：法的ページ
+# ---------------------------------------------------------
+
+@app.route("/privacy-policy")
+def privacy_policy():
+    return render_template("privacy.html")
+
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+# ---------------------------------------------------------
+# 実行
+# ---------------------------------------------------------
 
 if __name__ == "__main__":
     app.run()
