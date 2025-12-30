@@ -6,74 +6,85 @@
     <title>回答の確認 - {{ title }}</title>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 15px; text-align: center; color: #333; }
-        .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
-        .time-btn { border: 2px solid #ddd; padding: 10px 5px; border-radius: 12px; cursor: pointer; background: white; font-size: 0.85rem; display: flex; flex-direction: column; justify-content: center; min-height: 65px; transition: 0.2s; }
+        .card { background: white; border-radius: 24px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 450px; margin: auto; }
         
-        /* OK（空いている）の状態：LINEカラー */
+        /* 💡 取得した予定を見せるエリア（旧デザインの良いところ） */
+        .info-section { background: #f8f9fa; border-radius: 16px; padding: 15px; margin-bottom: 20px; text-align: left; border: 1px solid #eee; }
+        .info-tag { display: inline-block; background: #e9ecef; color: #495057; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; font-weight: bold; }
+        .busy-list { font-size: 0.85rem; color: #666; margin: 0; padding: 0; list-style: none; }
+        .busy-list li { padding: 4px 0; display: flex; align-items: center; }
+        .busy-list li::before { content: "📅"; margin-right: 8px; font-size: 0.8rem; }
+
+        /* グリッドUI（現行デザインの良いところ） */
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+        .time-btn { border: 2px solid #ddd; padding: 12px 5px; border-radius: 12px; cursor: pointer; background: white; font-size: 0.85rem; display: flex; flex-direction: column; justify-content: center; min-height: 65px; transition: 0.2s; }
         .time-btn.selected { border-color: #00b900; background: #eaffea; color: #00b900; font-weight: bold; }
-        /* NG（予定あり）の状態：少し薄くして「埋まっている感」を出す */
         .time-btn.busy { border-color: #ffcdd2; background: #ffebee; color: #ef5350; }
         
-        .submit-btn { width: 100%; padding: 18px; background: #00b900; color: white; border: none; border-radius: 35px; font-weight: bold; font-size: 1.1rem; cursor: pointer; margin-top: 10px; }
-        
-        .privacy-msg { font-size: 0.75rem; color: #666; margin-top: 15px; padding: 12px; background: #fffde7; border-radius: 10px; text-align: left; border: 1px solid #ffe082; line-height: 1.4; }
-        
-        /* 審査用リンク */
-        .footer-links { margin-top: 25px; font-size: 0.7rem; color: #999; }
-        .footer-links a { color: #999; text-decoration: none; margin: 0 8px; }
+        .submit-btn { width: 100%; padding: 18px; background: #00b900; color: white; border: none; border-radius: 35px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
+        .privacy-msg { font-size: 0.75rem; color: #666; margin-top: 15px; padding: 12px; background: #fffde7; border-radius: 10px; text-align: left; border: 1px solid #ffe082; }
+        .footer-links { margin-top: 25px; font-size: 0.7rem; color: #bbb; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 style="color:#00b900; margin-top:0;">{{ title }}</h2>
-        <p style="font-size:0.9rem; color:#666;">Google連携により空き時間を自動選択しました。<br>不都合があれば調整してください。</p>
+        <h2 style="color:#00b900; margin-top:0;">📅 予定を確認しました</h2>
+        
+        <div class="info-section">
+            <span class="info-tag">カレンダーからの取得結果</span>
+            <ul class="busy-list" id="busyDetailList">
+                </ul>
+        </div>
+
+        <p style="font-size:0.85rem; color:#666;">重複する枠を自動でNGにしました。<br>タップで調整も可能です。</p>
 
         <div class="grid" id="slotGrid"></div>
 
         <button class="submit-btn" onclick="sendResponse()">回答を確定する</button>
         
         <div class="privacy-msg">
-            🛡️ <b>プライバシーについて</b><br>
-            カレンダーの具体的な予定の内容（場所やタイトル）は、幹事を含め誰にも送信されません。「空き/予定あり」というステータスのみが共有されます。
+            🛡️ <b>プライバシー保護</b><br>
+            具体的な予定名（例：会議）は送信されません。空き状況のみが共有されます。
         </div>
     </div>
 
     <div class="footer-links">
-        <a href="/privacy-policy">プライバシーポリシー</a>
-        <a href="/terms">利用規約</a>
+        <a href="/privacy-policy" style="color:#bbb; text-decoration:none;">プライバシーポリシー</a> | 
+        <a href="/terms" style="color:#bbb; text-decoration:none;">利用規約</a>
     </div>
 
     <script>
         const busySlots = {{ busy_slots | tojson }};
+        const busyDetailList = document.getElementById('busyDetailList');
         
-        // 本来はURLパラメータ等から取得しますが、まずは直近3日間で表示例を作成
-        const today = new Date();
-        const dates = [];
-        for(let i=0; i<3; i++) {
-            const d = new Date();
-            d.setDate(today.getDate() + i);
-            dates.push(d.toISOString().split('T')[0]);
+        // 予定ありのリストを表示（納得感を高める）
+        if (busySlots.length > 0) {
+            busySlots.forEach(slot => {
+                const li = document.createElement('li');
+                // "2025-12-30_20:00" -> "12/30 20:00" に変換
+                const cleanText = slot.replace('-', '/').replace('_', ' ').substring(5);
+                li.innerText = `${cleanText}: 予定あり`;
+                busyDetailList.appendChild(li);
+            });
+        } else {
+            busyDetailList.innerHTML = "<li>重複する予定はありませんでした</li>";
         }
-        const times = ["12:00", "18:00", "20:00"];
 
+        const dates = ["2025-12-30", "2025-12-31", "2026-01-01"];
+        const times = ["12:00", "18:00", "20:00"];
         const grid = document.getElementById('slotGrid');
 
         dates.forEach(date => {
             times.forEach(time => {
                 const btn = document.createElement('button');
                 btn.className = 'time-btn';
-                
                 const slotKey = `${date}_${time}`;
-                const dObj = new Date(date);
-                const dateLabel = `${dObj.getMonth() + 1}/${dObj.getDate()}`;
-                const dayLabel = ['日', '月', '火', '水', '木', '金', '土'][dObj.getDay()];
+                const displayDate = date.split('-').slice(1).join('/');
 
-                btn.innerHTML = `<span style="font-size:0.7rem;">${dateLabel}(${dayLabel})</span><b>${time}</b>`;
+                btn.innerHTML = `<span style="font-size:0.7rem;">${displayDate}</span><b>${time}</b>`;
 
-                // 自動判定ロジック
-                if (busySlots.includes(slotKey) || busySlots.includes(date + "_ALLDAY")) {
-                    btn.classList.add('busy'); 
+                if (busySlots.includes(slotKey)) {
+                    btn.classList.add('busy');
                     btn.dataset.status = "ng";
                 } else {
                     btn.classList.add('selected');
@@ -96,7 +107,7 @@
         });
 
         function sendResponse() {
-            alert("回答が完了しました！AIが集計を行います。");
+            alert("回答を送信しました！ブラウザを閉じてトーク画面に戻ってください。");
             window.close();
         }
     </script>
