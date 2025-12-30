@@ -3,28 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>手動日程入力</title>
+    <title>手動日程入力 - {{ title }}</title>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 15px; text-align: center; color: #333; }
         .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
-        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-        .time-btn { border: 2px solid #ddd; padding: 12px; border-radius: 12px; cursor: pointer; background: white; font-size: 0.9rem; display: flex; flex-direction: column; height: 60px; justify-content: center; }
+        /* グリッドを3列にすると、スマホで見やすく、Google版とも合います */
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .time-btn { border: 2px solid #ddd; padding: 10px 5px; border-radius: 12px; cursor: pointer; background: white; font-size: 0.85rem; display: flex; flex-direction: column; justify-content: center; min-height: 60px; }
+        
+        /* 選択時の色をLINEカラー（#00b900）に統一 */
         .time-btn.selected { border-color: #00b900; background: #eaffea; color: #00b900; font-weight: bold; }
         .submit-btn { width: 100%; padding: 18px; background: #00b900; color: white; border: none; border-radius: 35px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
+        
+        .footer-links { margin-top: 20px; font-size: 0.75rem; color: #999; }
+        .footer-links a { color: #999; text-decoration: none; margin: 0 10px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 style="color:#00b900; margin-top:0;">📅 空き時間の入力</h2>
-        <p style="font-size:0.9rem; color:#666; margin-bottom:20px;">参加可能な時間帯を選択してください。</p>
+        <h2 style="color:#00b900; margin-top:0;">{{ title }}</h2>
+        <p style="font-size:0.9rem; color:#666; margin-bottom:20px;">空いている時間をタップしてください。</p>
+        
         <div class="grid" id="dateGrid"></div>
+        
         <button class="submit-btn" onclick="submit()">回答を送信する</button>
+    </div>
+
+    <div class="footer-links">
+        <a href="/privacy-policy">プライバシーポリシー</a>
+        <a href="/terms">利用規約</a>
     </div>
 
     <script>
         const params = new URLSearchParams(window.location.search);
-        const start = params.get('start');
-        const end = params.get('end');
+        // 招待状のURLに含まれる期間を取得（なければ今日から7日間などデフォルトを設定可能）
+        const start = params.get('start') || new Date().toISOString().split('T')[0];
+        const end = params.get('end') || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
         if (start && end) {
             const grid = document.getElementById('dateGrid');
@@ -34,11 +48,15 @@
             while (curr <= last) {
                 const dateLabel = `${curr.getMonth() + 1}/${curr.getDate()}`;
                 const dayLabel = ['日', '月', '火', '水', '木', '金', '土'][curr.getDay()];
+                const ymd = curr.toISOString().split('T')[0];
                 
-                ['12:00〜', '18:00〜'].forEach(time => {
+                // 12:00, 18:00 など枠を生成
+                ['12:00', '18:00'].forEach(time => {
                     const btn = document.createElement('div');
                     btn.className = 'time-btn';
-                    btn.innerHTML = `<span>${dateLabel} (${dayLabel})</span><b>${time}</b>`;
+                    btn.innerHTML = `<span style="font-size:0.7rem;">${dateLabel}(${dayLabel})</span><b>${time}</b>`;
+                    
+                    // 手動入力なので、最初は未選択状態
                     btn.onclick = () => btn.classList.toggle('selected');
                     grid.appendChild(btn);
                 });
@@ -47,7 +65,8 @@
         }
 
         function submit() {
-            alert("回答を送信しました！AIが集計を行います。");
+            // ここで本来はサーバーにデータを送る fetch() 処理を入れる
+            alert("回答を送信しました！");
             window.close();
         }
     </script>
