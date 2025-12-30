@@ -5,73 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>回答の確認 - {{ title }}</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 15px; text-align: center; color: #333; }
+        body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 15px; text-align: center; }
         .card { background: white; border-radius: 24px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 450px; margin: auto; }
         
-        /* 💡 取得した予定を見せるエリア（旧デザインの良いところ） */
-        .info-section { background: #f8f9fa; border-radius: 16px; padding: 15px; margin-bottom: 20px; text-align: left; border: 1px solid #eee; }
-        .info-tag { display: inline-block; background: #e9ecef; color: #495057; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; font-weight: bold; }
-        .busy-list { font-size: 0.85rem; color: #666; margin: 0; padding: 0; list-style: none; }
-        .busy-list li { padding: 4px 0; display: flex; align-items: center; }
-        .busy-list li::before { content: "📅"; margin-right: 8px; font-size: 0.8rem; }
-
-        /* グリッドUI（現行デザインの良いところ） */
         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
-        .time-btn { border: 2px solid #ddd; padding: 12px 5px; border-radius: 12px; cursor: pointer; background: white; font-size: 0.85rem; display: flex; flex-direction: column; justify-content: center; min-height: 65px; transition: 0.2s; }
-        .time-btn.selected { border-color: #00b900; background: #eaffea; color: #00b900; font-weight: bold; }
-        .time-btn.busy { border-color: #ffcdd2; background: #ffebee; color: #ef5350; }
+        .time-btn { border: 2px solid #ddd; padding: 10px 2px; border-radius: 12px; cursor: pointer; background: white; font-size: 0.8rem; display: flex; flex-direction: column; justify-content: center; min-height: 80px; transition: 0.2s; position: relative; }
+        
+        /* 3つの状態のスタイル */
+        .time-btn.ok { border-color: #00b900; background: #eaffea; color: #00b900; font-weight: bold; }
+        .time-btn.triangle { border-color: #ff9800; background: #fff3e0; color: #ef6c00; font-weight: bold; }
+        .time-btn.ng { border-color: #ff5252; background: #ffebee; color: #d32f2f; }
+
+        .conflict-reason { font-size: 0.6rem; color: #d32f2f; margin-top: 4px; line-height: 1.1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .status-badge { font-size: 0.65rem; padding: 2px 4px; border-radius: 4px; margin-top: 2px; }
         
         .submit-btn { width: 100%; padding: 18px; background: #00b900; color: white; border: none; border-radius: 35px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
-        .privacy-msg { font-size: 0.75rem; color: #666; margin-top: 15px; padding: 12px; background: #fffde7; border-radius: 10px; text-align: left; border: 1px solid #ffe082; }
-        .footer-links { margin-top: 25px; font-size: 0.7rem; color: #bbb; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 style="color:#00b900; margin-top:0;">📅 予定を確認しました</h2>
-        
-        <div class="info-section">
-            <span class="info-tag">カレンダーからの取得結果</span>
-            <ul class="busy-list" id="busyDetailList">
-                </ul>
-        </div>
-
-        <p style="font-size:0.85rem; color:#666;">重複する枠を自動でNGにしました。<br>タップで調整も可能です。</p>
+        <h2 style="color:#00b900; margin-top:0;">📅 予定の最終確認</h2>
+        <p style="font-size:0.8rem; color:#666;">タップするごとに <b>OK → △ → NG</b> が切り替わります。</p>
 
         <div class="grid" id="slotGrid"></div>
 
         <button class="submit-btn" onclick="sendResponse()">回答を確定する</button>
-        
-        <div class="privacy-msg">
-            🛡️ <b>プライバシー保護</b><br>
-            具体的な予定名（例：会議）は送信されません。空き状況のみが共有されます。
-        </div>
-    </div>
-
-    <div class="footer-links">
-        <a href="/privacy-policy" style="color:#bbb; text-decoration:none;">プライバシーポリシー</a> | 
-        <a href="/terms" style="color:#bbb; text-decoration:none;">利用規約</a>
     </div>
 
     <script>
-        const busySlots = {{ busy_slots | tojson }};
-        const busyDetailList = document.getElementById('busyDetailList');
+        const busySlots = {{ busy_slots | tojson }}; // 例: ["2025-12-30_20:00"]
         
-        // 予定ありのリストを表示（納得感を高める）
-        if (busySlots.length > 0) {
-            busySlots.forEach(slot => {
-                const li = document.createElement('li');
-                // "2025-12-30_20:00" -> "12/30 20:00" に変換
-                const cleanText = slot.replace('-', '/').replace('_', ' ').substring(5);
-                li.innerText = `${cleanText}: 予定あり`;
-                busyDetailList.appendChild(li);
-            });
-        } else {
-            busyDetailList.innerHTML = "<li>重複する予定はありませんでした</li>";
-        }
-
+        // 💡 修正点1: 12:00を消し、幹事の指定時間に合わせる（デモ用に18, 19, 20時に設定）
         const dates = ["2025-12-30", "2025-12-31", "2026-01-01"];
-        const times = ["12:00", "18:00", "20:00"];
+        const times = ["18:00", "19:00", "20:00"]; 
         const grid = document.getElementById('slotGrid');
 
         dates.forEach(date => {
@@ -81,33 +47,46 @@
                 const slotKey = `${date}_${time}`;
                 const displayDate = date.split('-').slice(1).join('/');
 
-                btn.innerHTML = `<span style="font-size:0.7rem;">${displayDate}</span><b>${time}</b>`;
+                // 💡 修正点3: 予定が重複している場合の初期判定
+                const isBusy = busySlots.includes(slotKey);
+                
+                let currentStatus = isBusy ? "ng" : "ok";
+                btn.classList.add(currentStatus);
 
-                if (busySlots.includes(slotKey)) {
-                    btn.classList.add('busy');
-                    btn.dataset.status = "ng";
-                } else {
-                    btn.classList.add('selected');
-                    btn.dataset.status = "ok";
-                }
+                const updateBtnUI = () => {
+                    let badge = currentStatus === "ok" ? "✅ OK" : (currentStatus === "triangle" ? "△ 途中から" : "❌ NG");
+                    let reasonText = isBusy && currentStatus === "ng" ? `<div class="conflict-reason">⚠️予定あり</div>` : "";
+                    
+                    btn.innerHTML = `
+                        <span style="font-size:0.7rem;">${displayDate}</span>
+                        <b>${time}〜</b>
+                        <span class="status-badge">${badge}</span>
+                        ${reasonText}
+                    `;
+                };
 
+                updateBtnUI();
+
+                // 💡 修正点2: 3択（トグル）切り替えロジック
                 btn.onclick = () => {
-                    if (btn.dataset.status === "ok") {
-                        btn.classList.remove('selected');
-                        btn.classList.add('busy');
-                        btn.dataset.status = "ng";
+                    if (currentStatus === "ok") {
+                        currentStatus = "triangle";
+                        btn.className = 'time-btn triangle';
+                    } else if (currentStatus === "triangle") {
+                        currentStatus = "ng";
+                        btn.className = 'time-btn ng';
                     } else {
-                        btn.classList.remove('busy');
-                        btn.classList.add('selected');
-                        btn.dataset.status = "ok";
+                        currentStatus = "ok";
+                        btn.className = 'time-btn ok';
                     }
+                    updateBtnUI();
                 };
                 grid.appendChild(btn);
             });
         });
 
         function sendResponse() {
-            alert("回答を送信しました！ブラウザを閉じてトーク画面に戻ってください。");
+            alert("回答を送信しました！");
             window.close();
         }
     </script>
