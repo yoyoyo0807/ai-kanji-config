@@ -5,43 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>回答の確認 - {{ title }}</title>
     <style>
-        /* manual_input.html のCSSをここにコピー */
-        body { font-family: sans-serif; background: #f4f5f7; padding: 15px; text-align: center; }
-        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 15px; text-align: center; color: #333; }
+        .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
-        .time-btn { padding: 15px 5px; border: 2px solid #ddd; border-radius: 12px; background: white; font-size: 0.9rem; cursor: pointer; }
+        .time-btn { border: 2px solid #ddd; padding: 10px 5px; border-radius: 12px; cursor: pointer; background: white; font-size: 0.85rem; display: flex; flex-direction: column; justify-content: center; min-height: 65px; transition: 0.2s; }
         
-        /* OK（空いている）の状態 */
-        .time-btn.selected { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; }
-        /* NG（予定あり）の状態 */
-        .time-btn.busy { background: #ffebee; border-color: #ef5350; color: #c62828; opacity: 0.7; }
+        /* OK（空いている）の状態：LINEカラー */
+        .time-btn.selected { border-color: #00b900; background: #eaffea; color: #00b900; font-weight: bold; }
+        /* NG（予定あり）の状態：少し薄くして「埋まっている感」を出す */
+        .time-btn.busy { border-color: #ffcdd2; background: #ffebee; color: #ef5350; }
         
-        .submit-btn { width: 100%; padding: 15px; background: #00b900; color: white; border: none; border-radius: 30px; font-weight: bold; font-size: 1.1rem; }
-        .privacy-msg { font-size: 0.75rem; color: #666; margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 8px; }
+        .submit-btn { width: 100%; padding: 18px; background: #00b900; color: white; border: none; border-radius: 35px; font-weight: bold; font-size: 1.1rem; cursor: pointer; margin-top: 10px; }
+        
+        .privacy-msg { font-size: 0.75rem; color: #666; margin-top: 15px; padding: 12px; background: #fffde7; border-radius: 10px; text-align: left; border: 1px solid #ffe082; line-height: 1.4; }
+        
+        /* 審査用リンク */
+        .footer-links { margin-top: 25px; font-size: 0.7rem; color: #999; }
+        .footer-links a { color: #999; text-decoration: none; margin: 0 8px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 id="eventTitle">{{ title }}</h2>
-        <p>カレンダーから空き時間を自動入力しました。<br>タップで調整も可能です。</p>
+        <h2 style="color:#00b900; margin-top:0;">{{ title }}</h2>
+        <p style="font-size:0.9rem; color:#666;">Google連携により空き時間を自動選択しました。<br>不都合があれば調整してください。</p>
 
-        <div class="grid" id="slotGrid">
-            </div>
+        <div class="grid" id="slotGrid"></div>
 
-        <button class="submit-btn" onclick="sendResponse()">この内容で回答を確定する</button>
+        <button class="submit-btn" onclick="sendResponse()">回答を確定する</button>
         
         <div class="privacy-msg">
-            🛡️ Googleカレンダーの具体的な予定名は誰にも送信されません。「OK/NG」の結果のみが幹事に伝わります。
+            🛡️ <b>プライバシーについて</b><br>
+            カレンダーの具体的な予定の内容（場所やタイトル）は、幹事を含め誰にも送信されません。「空き/予定あり」というステータスのみが共有されます。
         </div>
     </div>
 
+    <div class="footer-links">
+        <a href="/privacy-policy">プライバシーポリシー</a>
+        <a href="/terms">利用規約</a>
+    </div>
+
     <script>
-        // Flaskから渡された「予定あり」のリスト
         const busySlots = {{ busy_slots | tojson }};
         
-        // 仮の表示期間（本来は幹事の指定に合わせる）
-        const dates = ["2025-12-30", "2025-12-31", "2026-01-01"];
-        const times = ["19:00", "20:00", "21:00"];
+        // 本来はURLパラメータ等から取得しますが、まずは直近3日間で表示例を作成
+        const today = new Date();
+        const dates = [];
+        for(let i=0; i<3; i++) {
+            const d = new Date();
+            d.setDate(today.getDate() + i);
+            dates.push(d.toISOString().split('T')[0]);
+        }
+        const times = ["12:00", "18:00", "20:00"];
 
         const grid = document.getElementById('slotGrid');
 
@@ -51,19 +65,21 @@
                 btn.className = 'time-btn';
                 
                 const slotKey = `${date}_${time}`;
-                const displayDate = date.split('-').slice(1).join('/'); // 12/30形式
-                btn.innerHTML = `<div>${displayDate}</div><strong>${time}</strong>`;
+                const dObj = new Date(date);
+                const dateLabel = `${dObj.getMonth() + 1}/${dObj.getDate()}`;
+                const dayLabel = ['日', '月', '火', '水', '木', '金', '土'][dObj.getDay()];
 
-                // 【自動判定ロジック】予定リストに含まれているかチェック
+                btn.innerHTML = `<span style="font-size:0.7rem;">${dateLabel}(${dayLabel})</span><b>${time}</b>`;
+
+                // 自動判定ロジック
                 if (busySlots.includes(slotKey) || busySlots.includes(date + "_ALLDAY")) {
-                    btn.classList.add('busy'); // 予定あり（赤）
+                    btn.classList.add('busy'); 
                     btn.dataset.status = "ng";
                 } else {
-                    btn.classList.add('selected'); // 空き（緑）
+                    btn.classList.add('selected');
                     btn.dataset.status = "ok";
                 }
 
-                // タップで切り替え可能にする
                 btn.onclick = () => {
                     if (btn.dataset.status === "ok") {
                         btn.classList.remove('selected');
@@ -80,7 +96,7 @@
         });
 
         function sendResponse() {
-            alert("回答を送信しました！ブラウザを閉じてLINEに戻ってください。");
+            alert("回答が完了しました！AIが集計を行います。");
             window.close();
         }
     </script>
