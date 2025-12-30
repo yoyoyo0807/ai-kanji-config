@@ -1,21 +1,22 @@
 import os
 import json
 import datetime
-from flask import Flask, request, render_template, redirect
-from google_auth_oauthlib.flow import Flow
-from googleapiclient.discovery import build
+from flask import Flask, request, render_template, redirect, url_for
 
 app = Flask(__name__)
 # Renderの環境変数から取得。未設定時のデフォルト値も設定。
 app.secret_key = os.environ.get('SECRET_KEY', 'kanji-ai-secret-key-2025')
 
 # Google設定
+from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build
+
 google_creds_raw = os.environ.get('GOOGLE_CREDENTIALS_JSON')
 CLIENT_CONFIG = json.loads(google_creds_raw) if google_creds_raw else {}
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
 # ---------------------------------------------------------
-# メイン画面・回答分岐
+# 1. メイン画面・回答分岐
 # ---------------------------------------------------------
 
 @app.route("/")
@@ -26,7 +27,6 @@ def index():
 def answer():
     res = request.args.get('res')
     title = request.args.get('title', 'イベント')
-    # 統計情報のダミー
     count = 1 
     if res == 'no':
         return """
@@ -45,7 +45,28 @@ def manual_input():
     return render_template('manual_input.html', title=title)
 
 # ---------------------------------------------------------
-# Google OAuth 連携
+# 2. 幹事専用：日程確定フロー
+# ---------------------------------------------------------
+
+@app.route("/fix_date")
+def fix_date():
+    """リッチメニューの『日程を確定する』ボタンから呼ばれる画面"""
+    title = request.args.get('title', 'イベント')
+    # 本来はDBから回答データを集計しますが、現在はテンプレート側のデモデータを表示
+    return render_template('fix_date.html', title=title)
+
+@app.route("/submit_fix", methods=["POST"])
+def submit_fix():
+    """日程確定画面から送信された決定内容を処理する"""
+    data = request.json
+    selected_date = data.get('date')
+    selected_time = data.get('time')
+    # ここにMessaging APIを使ってLINEグループに「決定通知」を送るロジックを将来的に追加
+    print(f"日程が確定されました: {selected_date} {selected_time}")
+    return json.dumps({"status": "success"})
+
+# ---------------------------------------------------------
+# 3. Google OAuth 連携
 # ---------------------------------------------------------
 
 @app.route("/auth/google")
@@ -57,7 +78,6 @@ def auth_google():
         redirect_uri="https://ai-kanji-config-1.onrender.com/callback/google"
     )
     
-    # stateにタイトルを保持
     authorization_url, state = flow.authorization_url(
         access_type='offline', 
         include_granted_scopes='true',
@@ -112,7 +132,7 @@ def callback_google():
     return render_template('google_result.html', title=title, busy_slots=busy_slots)
 
 # ---------------------------------------------------------
-# Google審査対応：法的ページ
+# 4. Google審査対応：法的ページ
 # ---------------------------------------------------------
 
 @app.route("/privacy-policy")
