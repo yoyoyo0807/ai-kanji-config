@@ -3,87 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>回答の確認 - {{ title }}</title>
+    <title>日程調整 - AI幹事くん</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 15px; text-align: center; }
-        .card { background: white; border-radius: 24px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 450px; margin: auto; }
+        body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 15px; color: #333; }
+        .card { background: white; border-radius: 24px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 450px; margin: auto; }
         
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
-        .time-btn { border: 2px solid #ddd; padding: 10px 2px; border-radius: 12px; cursor: pointer; background: white; font-size: 0.8rem; display: flex; flex-direction: column; justify-content: center; min-height: 80px; transition: 0.2s; position: relative; }
-        
-        /* 3つの状態のスタイル */
-        .time-btn.ok { border-color: #00b900; background: #eaffea; color: #00b900; font-weight: bold; }
-        .time-btn.triangle { border-color: #ff9800; background: #fff3e0; color: #ef6c00; font-weight: bold; }
-        .time-btn.ng { border-color: #ff5252; background: #ffebee; color: #d32f2f; }
+        /* 日付ごとのセクション */
+        .day-section { margin-bottom: 30px; border-left: 4px solid #00b900; padding-left: 15px; text-align: left; }
+        .day-title { font-weight: bold; font-size: 1.1rem; margin-bottom: 10px; }
 
-        .conflict-reason { font-size: 0.6rem; color: #d32f2f; margin-top: 4px; line-height: 1.1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .status-badge { font-size: 0.65rem; padding: 2px 4px; border-radius: 4px; margin-top: 2px; }
+        /* タイムライン風の視覚化 */
+        .timeline-container { position: relative; background: #f8f9fa; border-radius: 12px; padding: 10px; margin: 10px 0; border: 1px solid #eee; }
+        .event-bar { height: 40px; border-radius: 8px; margin: 5px 0; display: flex; align-items: center; padding: 0 10px; font-size: 0.8rem; }
         
-        .submit-btn { width: 100%; padding: 18px; background: #00b900; color: white; border: none; border-radius: 35px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
+        /* 自分の既存予定（Googleから取得） */
+        .busy-bar { background: #e0e0e0; color: #757575; border: 1px dashed #bdbdbd; }
+        /* 今回の飲み会予定 */
+        .target-bar { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; font-weight: bold; }
+        .conflict { background: #ffebee; color: #c62828; border-color: #ffcdd2; }
+
+        /* 回答ボタン（スタンプ形式） */
+        .response-group { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; }
+        .resp-btn { flex: 1; padding: 10px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; transition: 0.2s; font-size: 0.8rem; }
+        .resp-btn.active-ok { border-color: #00b900; background: #eaffea; color: #00b900; }
+        .resp-btn.active-tri { border-color: #ff9800; background: #fff3e0; color: #ef6c00; }
+        .resp-btn.active-ng { border-color: #ff5252; background: #ffebee; color: #d32f2f; }
+
+        .submit-btn { width: 100%; padding: 18px; background: #00b900; color: white; border: none; border-radius: 35px; font-weight: bold; font-size: 1.1rem; margin-top: 25px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 style="color:#00b900; margin-top:0;">📅 予定の最終確認</h2>
-        <p style="font-size:0.8rem; color:#666;">タップするごとに <b>OK → △ → NG</b> が切り替わります。</p>
+        <h2 style="text-align:center; color:#00b900;">📅 スケジュールの確認</h2>
+        <p style="font-size:0.85rem; color:#666; text-align:center;">既存の予定と重なっている場所を確認して回答してください。</p>
 
-        <div class="grid" id="slotGrid"></div>
+        <div id="timelineList"></div>
 
-        <button class="submit-btn" onclick="sendResponse()">回答を確定する</button>
+        <button class="submit-btn" onclick="sendResponse()">回答を送信する</button>
     </div>
 
     <script>
-        const busySlots = {{ busy_slots | tojson }}; // 例: ["2025-12-30_20:00"]
+        const busySlots = {{ busy_slots | tojson }}; // 例: ["2025-12-30_19:00"]
+        const dates = ["2025-12-30", "2025-12-31"];
+        const targetTime = "19:00〜21:00"; // 幹事の指定時間
         
-        // 💡 修正点1: 12:00を消し、幹事の指定時間に合わせる（デモ用に18, 19, 20時に設定）
-        const dates = ["2025-12-30", "2025-12-31", "2026-01-01"];
-        const times = ["18:00", "19:00", "20:00"]; 
-        const grid = document.getElementById('slotGrid');
+        const container = document.getElementById('timelineList');
 
         dates.forEach(date => {
-            times.forEach(time => {
-                const btn = document.createElement('button');
-                btn.className = 'time-btn';
-                const slotKey = `${date}_${time}`;
-                const displayDate = date.split('-').slice(1).join('/');
+            const isConflict = busySlots.some(s => s.startsWith(date));
+            const displayDate = date.split('-').slice(1).join('/');
 
-                // 💡 修正点3: 予定が重複している場合の初期判定
-                const isBusy = busySlots.includes(slotKey);
-                
-                let currentStatus = isBusy ? "ng" : "ok";
-                btn.classList.add(currentStatus);
-
-                const updateBtnUI = () => {
-                    let badge = currentStatus === "ok" ? "✅ OK" : (currentStatus === "triangle" ? "△ 途中から" : "❌ NG");
-                    let reasonText = isBusy && currentStatus === "ng" ? `<div class="conflict-reason">⚠️予定あり</div>` : "";
-                    
-                    btn.innerHTML = `
-                        <span style="font-size:0.7rem;">${displayDate}</span>
-                        <b>${time}〜</b>
-                        <span class="status-badge">${badge}</span>
-                        ${reasonText}
-                    `;
-                };
-
-                updateBtnUI();
-
-                // 💡 修正点2: 3択（トグル）切り替えロジック
-                btn.onclick = () => {
-                    if (currentStatus === "ok") {
-                        currentStatus = "triangle";
-                        btn.className = 'time-btn triangle';
-                    } else if (currentStatus === "triangle") {
-                        currentStatus = "ng";
-                        btn.className = 'time-btn ng';
-                    } else {
-                        currentStatus = "ok";
-                        btn.className = 'time-btn ok';
-                    }
-                    updateBtnUI();
-                };
-                grid.appendChild(btn);
-            });
+            const section = document.createElement('div');
+            section.className = 'day-section';
+            section.innerHTML = `
+                <div class="day-title">${displayDate}</div>
+                <div class="timeline-container">
+                    ${isConflict ? `<div class="event-bar busy-bar">⚠️ 既存の予定あり</div>` : ''}
+                    <div class="event-bar target-bar ${isConflict ? 'conflict' : ''}">
+                        🍺 今回の予定 (${targetTime})
+                    </div>
+                </div>
+                <div class="response-group">
+                    <button class="resp-btn" onclick="select(this, 'ok')">◎<br>フル参加</button>
+                    <button class="resp-btn" onclick="select(this, 'tri')">△<br>途中から</button>
+                    <button class="resp-btn" onclick="select(this, 'ng')">×<br>不参加</button>
+                </div>
+            `;
+            container.appendChild(section);
         });
+
+        function select(btn, type) {
+            const group = btn.parentElement;
+            group.querySelectorAll('.resp-btn').forEach(b => b.className = 'resp-btn');
+            btn.classList.add('active-' + type);
+        }
 
         function sendResponse() {
             alert("回答を送信しました！");
