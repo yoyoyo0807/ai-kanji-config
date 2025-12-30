@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日程を確定 - AI幹事くん</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f4f5f7; padding: 15px; text-align: center; color: #333; }
+        .card { background: white; border-radius: 24px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 450px; margin: auto; }
+        .status-box { background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 16px; padding: 15px; margin-bottom: 20px; text-align: left; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 25px 0; }
+        
+        /* 候補日ボタン */
+        .fix-btn { border: 2px solid #eee; padding: 15px 10px; border-radius: 16px; cursor: pointer; background: white; text-align: center; transition: 0.2s; position: relative; }
+        .fix-btn.best { border-color: #ff9800; background: #fffde7; }
+        .fix-btn.selected { border-color: #00c853; background: #e8f5e9; transform: scale(1.02); }
+        
+        .ok-count { display: block; font-size: 0.75rem; color: #ff9800; font-weight: bold; margin-bottom: 4px; }
+        .submit-btn { width: 100%; padding: 20px; background: #ff9800; color: white; border: none; border-radius: 40px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
+        
+        .footer-links { margin-top: 25px; font-size: 0.75rem; color: #bbb; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="color:#ff9800; margin-top:0;">🏆 日程の最終決定</h2>
+        
+        <div class="status-box">
+            <p style="margin:0; font-size: 0.85rem; color: #e65100;">
+                <b>現在の集計状況:</b><br>
+                全員の回答が揃いました。最も「OK」が多い日には王冠マークがついています。
+            </p>
+        </div>
+
+        <div class="grid" id="fixGrid">
+            </div>
+
+        <button class="submit-btn" onclick="confirmDecision()">決定して全員に通知する</button>
+    </div>
+
+    <div class="footer-links">
+        <a href="/privacy-policy" style="color:#bbb; text-decoration:none;">プライバシーポリシー</a>
+    </div>
+
+    <script>
+        // 本来はサーバーから取得する集計結果（例）
+        const summary = [
+            { date: "12/30", time: "19:00", ok: 5, total: 5 },
+            { date: "12/30", time: "21:00", ok: 3, total: 5 },
+            { date: "12/31", time: "18:00", ok: 4, total: 5 },
+            { date: "1/1", time: "19:00", ok: 2, total: 5 }
+        ];
+
+        const grid = document.getElementById('fixGrid');
+        let selectedSlot = null;
+
+        summary.forEach(item => {
+            const btn = document.createElement('div');
+            btn.className = 'fix-btn';
+            if (item.ok === item.total) btn.classList.add('best');
+            
+            btn.innerHTML = `
+                <span class="ok-count">${item.ok === item.total ? '👑 全員OK' : item.ok + '名が参加可能'}</span>
+                <span style="font-size:0.8rem;">${item.date}</span><br>
+                <b>${item.time}〜</b>
+            `;
+
+            btn.onclick = () => {
+                document.querySelectorAll('.fix-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedSlot = item;
+            };
+            grid.appendChild(btn);
+        });
+
+        function confirmDecision() {
+            if (!selectedSlot) {
+                alert("決定する日程を選択してください。");
+                return;
+            }
+            alert(`【日程確定】\n${selectedSlot.date} ${selectedSlot.time}〜に決定しました！\nLINEで全員に通知を飛ばします。`);
+            // ここでサーバーに決定通知のリクエストを送る
+            window.close();
+        }
+    </script>
+</body>
+</html>
