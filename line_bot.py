@@ -6,7 +6,6 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
 app = Flask(__name__)
-# Renderの環境変数から取得。未設定時のデフォルト値も設定。
 app.secret_key = os.environ.get('SECRET_KEY', 'kanji-ai-secret-key-2025')
 
 # Google設定
@@ -22,7 +21,6 @@ def index():
 def answer():
     res = request.args.get('res')
     title = request.args.get('title', 'イベント')
-    # データベース未実装のため、現在は統計を仮で1名として表示
     count = 1 
     if res == 'no':
         return """
@@ -42,19 +40,25 @@ def manual_input():
 
 @app.route("/auth/google")
 def auth_google():
+    # 審査対応：stateにタイトルなどを込めて認証後も引き継げるようにする
+    title = request.args.get('title', 'イベント')
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
         redirect_uri="https://ai-kanji-config-1.onrender.com/callback/google"
     )
     
-    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+    # stateパラメータを使用してコンテキストを保持
+    authorization_url, state = flow.authorization_url(
+        access_type='offline', 
+        include_granted_scopes='true',
+        state=title
+    )
     
-    # LINEの外部ブラウザ起動フラグを付与
+    # LINE外部ブラウザ対策
     separator = "&" if "?" in authorization_url else "?"
     external_url = f"{authorization_url}{separator}openExternalBrowser=1"
     
-    # 💡 JSでSafari/Chromeへの切り替えを促す中継ページ
     return f"""
     <html>
         <head>
@@ -70,6 +74,7 @@ def auth_google():
 
 @app.route("/callback/google")
 def callback_google():
+    title = request.args.get('state', 'イベント') # auth_googleから引き継いだタイトル
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
@@ -77,69 +82,33 @@ def callback_google():
     )
     flow.fetch_token(authorization_response=request.url)
     
-    # Googleカレンダーから予定を取得
     creds = flow.credentials
     service = build('calendar', 'v3', credentials=creds)
     
+    # 予定取得範囲
     now = datetime.datetime.utcnow().isoformat() + 'Z'
-    time_max = (datetime.datetime.utcnow() + datetime.timedelta(days=10)).isoformat() + 'Z'
+    time_max = (datetime.datetime.utcnow() + datetime.timedelta(days=14)).isoformat() + 'Z'
     
     events_result = service.events().list(calendarId='primary', timeMin=now, timeMax=time_max,
                                         singleEvents=True, orderBy='startTime').execute()
     events = events_result.get('items', [])
 
-    # 予定リストのHTML作成（開始〜終了時間を表示）
-    event_items_html = ""
+    # --- 判定用データの作成 ---
+    busy_slots = []
     for event in events:
         start_raw = event['start'].get('dateTime', event['start'].get('date'))
-        end_raw = event['end'].get('dateTime', event['end'].get('date'))
-        
-        # 形式: 12/22 19:00 - 21:00
-        date_str = start_raw[5:10].replace('-', '/')
-        start_time = start_raw[11:16] if 'T' in start_raw else "終日"
-        end_time = end_raw[11:16] if 'T' in end_raw else ""
-        
-        time_display = f"{start_time} - {end_time}" if end_time else start_time
-        summary = event.get('summary', '予定あり')
-        event_items_html += f"<li><span style='color:#888;'>{date_str}</span> <b>{time_display}</b>: {summary}</li>"
+        # 日付と時間を判定しやすいキー（YYYY-MM-DD_HH:MM）に変換
+        if 'T' in start_raw:
+            dt_key = start_raw[:10] + "_" + start_raw[11:16]
+            busy_slots.append(dt_key)
+        else:
+            # 終日の予定
+            busy_slots.append(start_raw[:10] + "_ALLDAY")
 
-    if not event_items_html:
-        event_items_html = "<li>直近の予定はありません</li>"
-
-    # 確認画面の表示
-    return f"""
-    <html>
-        <head>
-            <meta name="viewport" content="width=device-width,initial-scale=1.0">
-            <style>
-                body {{ font-family: sans-serif; background: #f4f5f7; padding: 15px; text-align: center; }}
-                .container {{ background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }}
-                .event-box {{ background: #f9f9f9; border-radius: 12px; padding: 15px; margin: 15px 0; max-height: 180px; overflow-y: auto; text-align: left; font-size: 0.85rem; border: 1px solid #eee; }}
-                ul {{ list-style: none; padding: 0; margin: 0; }}
-                li {{ padding: 6px 0; border-bottom: 1px solid #eee; }}
-                .btn-confirm {{ display: block; width: 100%; padding: 18px; background: #00b900; color: white; border: none; border-radius: 35px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }}
-                .privacy-msg {{ font-size: 0.8rem; color: #666; background: #fffde7; padding: 12px; border-radius: 10px; text-align: left; margin-bottom: 20px; border: 1px solid #ffe082; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h2 style="color:#00b900; margin-top:0;">📅 予定を確認しました</h2>
-                <div class="event-box"><ul>{event_items_html}</ul></div>
-                <div class="privacy-msg">
-                    <strong>🛡️ 幹事への共有について</strong><br>
-                    安心してください。幹事には「OKな時間」だけを伝えます。予定のタイトル（例：通院）は<b>一切送信されません</b>。
-                </div>
-                <button class="btn-confirm" onclick="finish()">この内容で回答する</button>
-            </div>
-            <script>
-                function finish() {{
-                    alert("回答が完了しました！\\nブラウザを閉じてトーク画面に戻ってください。");
-                    window.close();
-                }}
-            </script>
-        </body>
-    </html>
-    """
+    # 完成度向上のため、専用のテンプレートにデータを渡してレンダリング
+    return render_template('google_result.html', 
+                           title=title, 
+                           busy_slots=busy_slots)
 
 if __name__ == "__main__":
     app.run()
